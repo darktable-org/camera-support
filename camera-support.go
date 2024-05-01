@@ -38,9 +38,9 @@ func main() {
 	)
 
 	flag.StringVar(&rawspeedPath, "rawspeed", "", "rawspeed cameras.xml location. URL or relative local path")
-	flag.StringVar(&librawPath, "libraw", "", "LibRaw camera list location")
-	flag.StringVar(&wbpresetsPath, "wbpresets", "", "wb_presets.json location")
-	flag.StringVar(&noiseprofilesPath, "noiseprofiles", "", "noiseprofiles.json location")
+	flag.StringVar(&librawPath, "libraw", "", "libraw.tsv location. URL or relative local path")
+	flag.StringVar(&wbpresetsPath, "wbpresets", "", "wb_presets.json location. URL or relative local path")
+	flag.StringVar(&noiseprofilesPath, "noiseprofiles", "", "noiseprofiles.json location. URL or relative local path")
 	flag.StringVar(&outputFormat, "format", "", "Output format")
 	flag.StringVar(&outputFile, "out", "", "Output file")
 	flag.Parse()
