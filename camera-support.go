@@ -17,6 +17,17 @@ import (
 // https://github.com/darktable-org/darktable/blob/master/data/noiseprofiles.json
 // https://github.com/darktable-org/darktable/blob/master/data/wb_presets.json
 
+type camera struct {
+	Make          string
+	Model         string
+	Aliases       []string
+	Formats       []string // rawspeed modes
+	WBPresets     bool
+	NoiseProfiles bool
+	RSSupported   string // rawspeed support
+	Decoder       string // rawspeed | libraw
+}
+
 func main() {
 	var options struct {
 		rawspeedPath      string
@@ -42,30 +53,28 @@ func main() {
 	// fmt.Println(options.outputFormat)
 	// fmt.Println(options.outputFile)
 
-	type camera struct {
-		Make          string
-		Model         string
-		Aliases       []string
-		Formats       []string // rawspeed modes
-		WBPresets     bool
-		NoiseProfiles bool
-		RSSupported   string // rawspeed support
-		Decoder       string // rawspeed | libraw
-	}
-
 	cameras := map[string]camera{}
 
-	// resp, err := http.Get("https://raw.githubusercontent.com/darktable-org/rawspeed/develop/data/cameras.xml")
-	// if err != nil {
-	// 	fmt.Println("Error opening cameras.xml")
-	// }
-	// defer resp.Body.Close()
-	// fmt.Println("cameras.xml open")
+	loadCamerasXML(cameras, options.rawspeedPath)
 
-	////  rawspeed cameras.xml  ////
+	////  Output  ////
 
+	camerasOrder := make([]string, 0, len(cameras))
+	for k := range cameras {
+		camerasOrder = append(camerasOrder, k)
+	}
+
+	sort.Strings(camerasOrder)
+
+	for _, k := range camerasOrder {
+		c := cameras[k]
+		fmt.Println(c.Make, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats))
+	}
+}
+
+func loadCamerasXML(cameras map[string]camera, camerasXMLPath string) {
 	camerasXML := etree.NewDocument()
-	if err := camerasXML.ReadFromFile(options.rawspeedPath); err != nil {
+	if err := camerasXML.ReadFromFile(camerasXMLPath); err != nil {
 		panic(err)
 	}
 
@@ -128,21 +137,5 @@ func main() {
 		}
 
 		cameras[key] = camera
-	}
-
-	////  libraw.tsv ////
-
-	////  Output  ////
-
-	camerasOrder := make([]string, 0, len(cameras))
-	for k := range cameras {
-		camerasOrder = append(camerasOrder, k)
-	}
-
-	sort.Strings(camerasOrder)
-
-	for _, k := range camerasOrder {
-		c := cameras[k]
-		fmt.Println(c.Make, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats))
 	}
 }
