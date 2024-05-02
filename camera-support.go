@@ -18,29 +18,29 @@ import (
 // https://github.com/darktable-org/darktable/blob/master/data/wb_presets.json
 
 func main() {
-	var (
+	var options struct {
 		rawspeedPath      string
 		librawPath        string
 		wbpresetsPath     string
 		noiseprofilesPath string
 		outputFormat      string
 		outputFile        string
-	)
+	}
 
-	flag.StringVar(&rawspeedPath, "rawspeed", "", "rawspeed cameras.xml location. URL or relative local path")
-	flag.StringVar(&librawPath, "libraw", "", "libraw.tsv location. URL or relative local path")
-	flag.StringVar(&wbpresetsPath, "wbpresets", "", "wb_presets.json location. URL or relative local path")
-	flag.StringVar(&noiseprofilesPath, "noiseprofiles", "", "noiseprofiles.json location. URL or relative local path")
-	flag.StringVar(&outputFormat, "format", "", "Output format")
-	flag.StringVar(&outputFile, "out", "", "Output file")
+	flag.StringVar(&options.rawspeedPath, "rawspeed", "data/cameras.xml", "rawspeed cameras.xml location. URL or relative local path")
+	flag.StringVar(&options.librawPath, "libraw", "data/libraw.tsv", "libraw.tsv location. URL or relative local path")
+	flag.StringVar(&options.wbpresetsPath, "wbpresets", "data/wb_presets.json", "wb_presets.json location. URL or relative local path")
+	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "data/noiseprofiles.json", "noiseprofiles.json location. URL or relative local path")
+	flag.StringVar(&options.outputFormat, "format", "tsv", "Output format")
+	flag.StringVar(&options.outputFile, "out", "", "Output file")
 	flag.Parse()
 
-	// fmt.Println(rawspeedPath)
-	// fmt.Println(librawPath)
-	// fmt.Println(wbpresetsPath)
-	// fmt.Println(noiseprofilesPath)
-	// fmt.Println(outputFormat)
-	// fmt.Println(outputFile)
+	// fmt.Println(options.rawspeedPath)
+	// fmt.Println(options.librawPath)
+	// fmt.Println(options.wbpresetsPath)
+	// fmt.Println(options.noiseprofilesPath)
+	// fmt.Println(options.outputFormat)
+	// fmt.Println(options.outputFile)
 
 	type camera struct {
 		Make          string
@@ -65,7 +65,7 @@ func main() {
 	////  rawspeed cameras.xml  ////
 
 	camerasXML := etree.NewDocument()
-	if err := camerasXML.ReadFromFile("data/cameras.xml"); err != nil {
+	if err := camerasXML.ReadFromFile(options.rawspeedPath); err != nil {
 		panic(err)
 	}
 
