@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/csv"
 	"flag"
 	"fmt"
+	"log"
+	"os"
 	"sort"
 	"strings"
 
@@ -56,6 +59,7 @@ func main() {
 	cameras := map[string]camera{}
 
 	loadCamerasXML(cameras, options.rawspeedPath)
+	loadLibRawTSV(cameras, options.librawPath)
 
 	////  Output  ////
 
@@ -80,18 +84,18 @@ func loadCamerasXML(cameras map[string]camera, camerasXMLPath string) {
 
 	root := camerasXML.SelectElement("Cameras")
 	for _, c := range root.SelectElements("Camera") {
-		make := ""
+		maker := ""
 		model := ""
 		key := ""
 
 		if id := c.SelectElement("ID"); id != nil {
-			make = id.SelectAttrValue("make", "")
+			maker = id.SelectAttrValue("make", "")
 			model = id.SelectAttrValue("model", "")
-			key = make + " " + model
+			key = maker + " " + model
 		} else {
-			make = c.SelectAttrValue("make", "")
+			maker = c.SelectAttrValue("make", "")
 			model = c.SelectAttrValue("model", "")
-			key = make + " " + model
+			key = maker + " " + model
 
 			// fmt.Println("= No ID element")
 			// fmt.Println("  "+make, "/ "+model)
@@ -103,7 +107,7 @@ func loadCamerasXML(cameras map[string]camera, camerasXMLPath string) {
 		}
 
 		camera := cameras[key]
-		camera.Make = make
+		camera.Make = maker
 		camera.Model = model
 
 		if aliases := c.SelectElement("Aliases"); aliases != nil {
@@ -114,7 +118,7 @@ func loadCamerasXML(cameras map[string]camera, camerasXMLPath string) {
 				val := a.Text()
 				if id == "" {
 					// Not ideal, but probably the best that can be done for now
-					alias, _ = strings.CutPrefix(val, make+" ")
+					alias, _ = strings.CutPrefix(val, maker+" ")
 				} else {
 					alias = id
 				}
@@ -138,4 +142,82 @@ func loadCamerasXML(cameras map[string]camera, camerasXMLPath string) {
 
 		cameras[key] = camera
 	}
+}
+
+func loadLibRawTSV(cameras map[string]camera, librawTSVPath string) {
+
+	librawTSV, err := os.Open(librawTSVPath)
+	if err != nil {
+		log.Println("Cannot open libraw.tsv:", err)
+	}
+	defer librawTSV.Close()
+
+	reader := csv.NewReader(librawTSV)
+	reader.Comma = '\t'
+	reader.Read() // use Read to remove the first line
+	rows, err := reader.ReadAll()
+	if err != nil {
+		log.Println("Cannot read libraw.tsv:", err)
+	}
+
+	for _, c := range rows {
+
+		maker := c[0]
+		model := c[1]
+		aliases := c[2]
+		formats := c[3]
+		key := maker + " " + model
+
+		camera := cameras[key]
+		camera.Make = maker
+		camera.Model = model
+
+		if aliases != "" {
+			// Use a set to ensure no duplicate aliases
+			set := make(map[string]struct{})
+			if len(camera.Aliases) >= 1 {
+				for _, a := range camera.Aliases {
+					set[a] = struct{}{}
+				}
+			}
+
+			for _, a := range strings.Split(aliases, ";") {
+				a := strings.Trim(a, " ")
+				set[a] = struct{}{}
+			}
+
+			camera.Aliases = nil
+			for k := range set {
+				camera.Aliases = append(camera.Aliases, k)
+			}
+		}
+
+		if formats != "" {
+			// Use a set to ensure no duplicate formats
+			set := make(map[string]struct{})
+			if len(camera.Formats) >= 1 {
+				for _, f := range camera.Formats {
+					set[f] = struct{}{}
+				}
+			}
+
+			for _, f := range strings.Split(formats, ";") {
+				f := strings.Trim(f, " ")
+				set[f] = struct{}{}
+			}
+
+			camera.Formats = nil
+			for k := range set {
+				camera.Formats = append(camera.Formats, k)
+			}
+		}
+
+		camera.Decoder = "libraw"
+
+		cameras[key] = camera
+	}
+}
+
+func loadWBPresets(cameras map[string]camera, wbPresetsPath string) {
+
 }
