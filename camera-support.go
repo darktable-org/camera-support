@@ -4,7 +4,9 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -76,9 +78,35 @@ func main() {
 	}
 }
 
-func loadCamerasXML(cameras map[string]camera, camerasXMLPath string) {
+func getData(path string) []byte {
+	if strings.HasPrefix(path, "https://") {
+		// fmt.Println("-- Getting data from URL")
+		res, err := http.Get(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		data, err := io.ReadAll(res.Body)
+		res.Body.Close()
+		if res.StatusCode > 299 {
+			log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, data)
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		return data
+	} else {
+		// fmt.Println("-- Getting data from local file")
+		data, err := os.ReadFile(path)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return data
+	}
+}
+
+func loadCamerasXML(cameras map[string]camera, rawspeedPath string) {
 	camerasXML := etree.NewDocument()
-	if err := camerasXML.ReadFromFile(camerasXMLPath); err != nil {
+	if err := camerasXML.ReadFromBytes(getData(rawspeedPath)); err != nil {
 		panic(err)
 	}
 
@@ -144,13 +172,9 @@ func loadCamerasXML(cameras map[string]camera, camerasXMLPath string) {
 	}
 }
 
-func loadLibRawTSV(cameras map[string]camera, librawTSVPath string) {
-
-	librawTSV, err := os.Open(librawTSVPath)
-	if err != nil {
-		log.Println("Cannot open libraw.tsv:", err)
-	}
-	defer librawTSV.Close()
+func loadLibRawTSV(cameras map[string]camera, librawPath string) {
+	librawData := getData(librawPath)
+	librawTSV := strings.NewReader(string(librawData))
 
 	reader := csv.NewReader(librawTSV)
 	reader.Comma = '\t'
