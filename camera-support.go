@@ -14,16 +14,8 @@ import (
 	"github.com/beevik/etree"
 )
 
-// https://www.darktable.org/resources/camera-support/
-//
-// https://github.com/darktable-org/rawspeed/blob/develop/data/cameras.xml
-// https://github.com/darktable-org/darktable/blob/master/src/imageio/imageio_libraw.c
-//
-// https://github.com/darktable-org/darktable/blob/master/data/noiseprofiles.json
-// https://github.com/darktable-org/darktable/blob/master/data/wb_presets.json
-
 type camera struct {
-	Make          string
+	Maker         string
 	Model         string
 	Aliases       []string
 	Formats       []string // rawspeed modes
@@ -51,13 +43,6 @@ func main() {
 	flag.StringVar(&options.outputFile, "out", "", "Output file")
 	flag.Parse()
 
-	// fmt.Println(options.rawspeedPath)
-	// fmt.Println(options.librawPath)
-	// fmt.Println(options.wbpresetsPath)
-	// fmt.Println(options.noiseprofilesPath)
-	// fmt.Println(options.outputFormat)
-	// fmt.Println(options.outputFile)
-
 	cameras := map[string]camera{}
 
 	loadCamerasXML(cameras, options.rawspeedPath)
@@ -74,7 +59,7 @@ func main() {
 
 	for _, k := range camerasOrder {
 		c := cameras[k]
-		fmt.Println(c.Make, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats))
+		fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats))
 	}
 }
 
@@ -104,10 +89,10 @@ func getData(path string) []byte {
 	}
 }
 
-func loadCamerasXML(cameras map[string]camera, rawspeedPath string) {
+func loadCamerasXML(cameras map[string]camera, path string) {
 	camerasXML := etree.NewDocument()
-	if err := camerasXML.ReadFromBytes(getData(rawspeedPath)); err != nil {
-		panic(err)
+	if err := camerasXML.ReadFromBytes(getData(path)); err != nil {
+		log.Fatal(err)
 	}
 
 	root := camerasXML.SelectElement("Cameras")
@@ -119,11 +104,11 @@ func loadCamerasXML(cameras map[string]camera, rawspeedPath string) {
 		if id := c.SelectElement("ID"); id != nil {
 			maker = id.SelectAttrValue("make", "")
 			model = id.SelectAttrValue("model", "")
-			key = maker + " " + model
+			key = strings.ToLower(maker + " " + model)
 		} else {
 			maker = c.SelectAttrValue("make", "")
 			model = c.SelectAttrValue("model", "")
-			key = maker + " " + model
+			key = strings.ToLower(maker + " " + model)
 
 			// fmt.Println("= No ID element")
 			// fmt.Println("  "+make, "/ "+model)
@@ -135,7 +120,7 @@ func loadCamerasXML(cameras map[string]camera, rawspeedPath string) {
 		}
 
 		camera := cameras[key]
-		camera.Make = maker
+		camera.Maker = maker
 		camera.Model = model
 
 		if aliases := c.SelectElement("Aliases"); aliases != nil {
@@ -145,7 +130,9 @@ func loadCamerasXML(cameras map[string]camera, rawspeedPath string) {
 				id := a.SelectAttrValue("id", "")
 				val := a.Text()
 				if id == "" {
+					// Sometimes <Alias> doesn't have an id attribute, so use the text instead
 					// Not ideal, but probably the best that can be done for now
+					// Would be better if cameras.xml was consistent
 					alias, _ = strings.CutPrefix(val, maker+" ")
 				} else {
 					alias = id
@@ -159,9 +146,9 @@ func loadCamerasXML(cameras map[string]camera, rawspeedPath string) {
 
 		if format := c.SelectAttrValue("mode", ""); format != "" {
 			camera.Formats = append(camera.Formats, format)
-		} else {
-			camera.Formats = append(camera.Formats, "default")
-		}
+		} //  else {
+		// 	camera.Formats = append(camera.Formats, "default")
+		// }
 
 		camera.RSSupported = c.SelectAttrValue("supported", "")
 		if camera.RSSupported == "" {
@@ -172,8 +159,8 @@ func loadCamerasXML(cameras map[string]camera, rawspeedPath string) {
 	}
 }
 
-func loadLibRawTSV(cameras map[string]camera, librawPath string) {
-	librawData := getData(librawPath)
+func loadLibRawTSV(cameras map[string]camera, path string) {
+	librawData := getData(path)
 	librawTSV := strings.NewReader(string(librawData))
 
 	reader := csv.NewReader(librawTSV)
@@ -190,10 +177,10 @@ func loadLibRawTSV(cameras map[string]camera, librawPath string) {
 		model := c[1]
 		aliases := c[2]
 		formats := c[3]
-		key := maker + " " + model
+		key := strings.ToLower(maker + " " + model)
 
 		camera := cameras[key]
-		camera.Make = maker
+		camera.Maker = maker
 		camera.Model = model
 
 		if aliases != "" {
@@ -242,6 +229,10 @@ func loadLibRawTSV(cameras map[string]camera, librawPath string) {
 	}
 }
 
-func loadWBPresets(cameras map[string]camera, wbPresetsPath string) {
+func loadWBPresets(cameras map[string]camera, path string) {
+
+}
+
+func loadNoiseProfiles(cameras map[string]camera, path string) {
 
 }
