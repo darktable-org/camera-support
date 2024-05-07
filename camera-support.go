@@ -25,12 +25,22 @@ type camera struct {
 	Decoder       string // rawspeed | libraw
 }
 
+type stats struct {
+	cameras       int
+	aliases       int
+	rawspeed      int
+	libraw        int
+	wbPresets     int
+	noiseProfiles int
+}
+
 func main() {
 	var options struct {
 		rawspeedPath      string
 		librawPath        string
 		wbpresetsPath     string
 		noiseprofilesPath string
+		stats             bool
 		outputFormat      string
 		outputFile        string
 	}
@@ -39,6 +49,7 @@ func main() {
 	flag.StringVar(&options.librawPath, "libraw", "data/libraw.tsv", "libraw.tsv location. URL or relative local path")
 	flag.StringVar(&options.wbpresetsPath, "wbpresets", "data/wb_presets.json", "wb_presets.json location. URL or relative local path")
 	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "data/noiseprofiles.json", "noiseprofiles.json location. URL or relative local path")
+	flag.BoolVar(&options.stats, "stats", false, "Print statistics")
 	flag.StringVar(&options.outputFormat, "format", "tsv", "Output format")
 	flag.StringVar(&options.outputFile, "out", "", "Output file")
 	flag.Parse()
@@ -47,6 +58,8 @@ func main() {
 
 	loadCamerasXML(cameras, options.rawspeedPath)
 	loadLibRawTSV(cameras, options.librawPath)
+
+	stats := generateStats(cameras)
 
 	////  Output  ////
 
@@ -60,6 +73,15 @@ func main() {
 	for _, k := range camerasOrder {
 		c := cameras[k]
 		fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats))
+	}
+
+	if options.stats == true {
+		fmt.Println("\nCameras:\t", stats.cameras)
+		fmt.Println("  rawspeed:\t", stats.rawspeed)
+		fmt.Println("  LibRaw:\t", stats.libraw)
+		fmt.Println("Aliases:\t", stats.aliases)
+		fmt.Println("WB Presets:\t", stats.wbPresets)
+		fmt.Println("Noise Profiles:\t", stats.noiseProfiles)
 	}
 }
 
@@ -137,9 +159,9 @@ func loadCamerasXML(cameras map[string]camera, path string) {
 				} else {
 					alias = id
 				}
-				// fmt.Println("  id:    \t" + id)
-				// fmt.Println("  val:   \t" + val)
-				// fmt.Println("  alias: \t" + alias)
+				// fmt.Println("  id:\t" + id)
+				// fmt.Println("  val:\t" + val)
+				// fmt.Println("  alias:\t" + alias)
 				camera.Aliases = append(camera.Aliases, alias)
 			}
 		}
@@ -235,4 +257,41 @@ func loadWBPresets(cameras map[string]camera, path string) {
 
 func loadNoiseProfiles(cameras map[string]camera, path string) {
 
+}
+
+func generateStats(cameras map[string]camera) stats {
+
+	s := stats{
+		cameras:       0,
+		aliases:       0,
+		rawspeed:      0,
+		libraw:        0,
+		wbPresets:     0,
+		noiseProfiles: 0,
+	}
+
+	for _, c := range cameras {
+		if c.Decoder == "" {
+			// We only want actually supported cameras
+			continue
+		} else if c.Decoder == "rawspeed" {
+			s.cameras += 1
+			s.rawspeed += 1
+		} else if c.Decoder == "libraw" {
+			s.cameras += 1
+			s.libraw += 1
+		}
+
+		s.aliases += len(c.Aliases)
+
+		if c.NoiseProfiles == true {
+			s.noiseProfiles += 1
+		}
+
+		if c.WBPresets == true {
+			s.wbPresets += 1
+		}
+	}
+
+	return s
 }
