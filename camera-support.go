@@ -31,6 +31,7 @@ type stats struct {
 	aliases       int
 	rawspeed      int
 	libraw        int
+	generic       int
 	wbPresets     int
 	noiseProfiles int
 }
@@ -60,6 +61,7 @@ func main() {
 	loadCamerasXML(cameras, options.rawspeedPath)
 	loadLibRawTSV(cameras, options.librawPath)
 
+	loadWBPresets(cameras, options.wbpresetsPath)
 	loadNoiseProfiles(cameras, options.noiseprofilesPath)
 
 	stats := generateStats(cameras)
@@ -82,6 +84,7 @@ func main() {
 		fmt.Println("\nCameras:\t", stats.cameras)
 		fmt.Println("  rawspeed:\t", stats.rawspeed)
 		fmt.Println("  LibRaw:\t", stats.libraw)
+		fmt.Println("  Generic:\t", stats.generic)
 		fmt.Println("Aliases:\t", stats.aliases)
 		fmt.Println("WB Presets:\t", stats.wbPresets)
 		fmt.Println("Noise Profiles:\t", stats.noiseProfiles)
@@ -255,7 +258,36 @@ func loadLibRawTSV(cameras map[string]camera, path string) {
 }
 
 func loadWBPresets(cameras map[string]camera, path string) {
+	type Presets struct {
+		WBPresets []struct {
+			Maker  string `json:"maker"`
+			Models []struct {
+				Model string `json:"model"`
+			} `json:"models"`
+		} `json:"wb_presets"`
+	}
 
+	jsonBytes := getData(path)
+
+	var presets Presets
+	err := json.Unmarshal(jsonBytes, &presets)
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+
+	for _, v := range presets.WBPresets {
+		for _, m := range v.Models {
+			key := strings.ToLower(v.Maker + " " + m.Model)
+			camera := cameras[key]
+			if camera.Maker == "" {
+				camera.Decoder = "generic"
+			}
+			camera.Maker = v.Maker
+			camera.Model = m.Model
+			camera.WBPresets = true
+			cameras[key] = camera
+		}
+	}
 }
 
 func loadNoiseProfiles(cameras map[string]camera, path string) {
@@ -280,6 +312,11 @@ func loadNoiseProfiles(cameras map[string]camera, path string) {
 		for _, m := range v.Models {
 			key := strings.ToLower(v.Maker + " " + m.Model)
 			camera := cameras[key]
+			if camera.Maker == "" {
+				camera.Decoder = "generic"
+			}
+			camera.Maker = v.Maker
+			camera.Model = m.Model
 			camera.NoiseProfiles = true
 			cameras[key] = camera
 		}
@@ -293,6 +330,7 @@ func generateStats(cameras map[string]camera) stats {
 		aliases:       0,
 		rawspeed:      0,
 		libraw:        0,
+		generic:       0,
 		wbPresets:     0,
 		noiseProfiles: 0,
 	}
@@ -307,6 +345,9 @@ func generateStats(cameras map[string]camera) stats {
 		} else if c.Decoder == "libraw" {
 			s.cameras += 1
 			s.libraw += 1
+		} else if c.Decoder == "generic" {
+			s.cameras += 1
+			s.generic += 1
 		}
 
 		s.aliases += len(c.Aliases)
