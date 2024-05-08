@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -59,6 +60,8 @@ func main() {
 	loadCamerasXML(cameras, options.rawspeedPath)
 	loadLibRawTSV(cameras, options.librawPath)
 
+	loadNoiseProfiles(cameras, options.noiseprofilesPath)
+
 	stats := generateStats(cameras)
 
 	////  Output  ////
@@ -72,7 +75,7 @@ func main() {
 
 	for _, k := range camerasOrder {
 		c := cameras[k]
-		fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats))
+		fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats), "/", k)
 	}
 
 	if options.stats == true {
@@ -256,7 +259,31 @@ func loadWBPresets(cameras map[string]camera, path string) {
 }
 
 func loadNoiseProfiles(cameras map[string]camera, path string) {
+	type Profiles struct {
+		Noiseprofiles []struct {
+			Maker  string `json:"maker"`
+			Models []struct {
+				Model string `json:"model"`
+			} `json:"models"`
+		} `json:"noiseprofiles"`
+	}
 
+	jsonBytes := getData(path)
+
+	var profiles Profiles
+	err := json.Unmarshal(jsonBytes, &profiles)
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+
+	for _, v := range profiles.Noiseprofiles {
+		for _, m := range v.Models {
+			key := strings.ToLower(v.Maker + " " + m.Model)
+			camera := cameras[key]
+			camera.NoiseProfiles = true
+			cameras[key] = camera
+		}
+	}
 }
 
 func generateStats(cameras map[string]camera) stats {
