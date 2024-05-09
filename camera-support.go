@@ -25,6 +25,7 @@ type camera struct {
 	NoiseProfiles bool
 	RSSupported   string // rawspeed support
 	Decoder       string // rawspeed / libraw / unknown
+	Annotations   []string
 }
 
 type stats struct {
@@ -100,7 +101,7 @@ func main() {
 	} else if options.format == "debug" {
 		for _, k := range camerasOrder {
 			c := cameras[k]
-			fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats), "/", k)
+			fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats), "/", c.Annotations, "/", k)
 		}
 	}
 
@@ -211,6 +212,8 @@ func loadRawspeed(cameras map[string]camera, path string) {
 			camera.Decoder = "rawspeed"
 		}
 
+		camera.Annotations = append(camera.Annotations, "cameras.xml")
+
 		cameras[key] = camera
 	}
 }
@@ -271,6 +274,7 @@ func loadLibRaw(cameras map[string]camera, path string) {
 			}
 
 			camera.Decoder = "libraw"
+			camera.Annotations = append(camera.Annotations, "imageio_libraw.c")
 			cameras[key] = camera
 		}
 	}
@@ -311,6 +315,7 @@ func loadWBPresets(cameras map[string]camera, path string) {
 			camera.Maker = v.Maker
 			camera.Model = m.Model
 			camera.WBPresets = true
+			camera.Annotations = append(camera.Annotations, "wb_presets.json")
 			cameras[key] = camera
 		}
 	}
@@ -344,6 +349,7 @@ func loadNoiseProfiles(cameras map[string]camera, path string) {
 			camera.Maker = v.Maker
 			camera.Model = m.Model
 			camera.NoiseProfiles = true
+			camera.Annotations = append(camera.Annotations, "noiseprofiles.json")
 			cameras[key] = camera
 		}
 	}
