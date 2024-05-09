@@ -1,34 +1,36 @@
 ## Usage
 
-`camera-support [-libraw <path>] [-rawspeed <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats [stdout|table|all]] [-format <tsv|md|html>] [-headers <h1|h2|h3|h4|h5|h6>] [-fields <...>] [-unsupported] [-out <path>]`
+`camera-support [-libraw <path>] [-rawspeed <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|html|tsv|none>] [-headers <h1|h2|h3|h4|h5|h6>] [-fields <...>] [-unsupported] [<output path>]`
 
 All options that take a file path accept either a URL (starting with `https://`) or a relative local path.
 
 ### -libraw
   
-`imageio_libraw.c` location. If omitted, LibRaw cameras are not added.
-Default: `https://github.com/darktable-org/darktable/blob/master/src/imageio/imageio_libraw.c`
+`imageio_libraw.c` location. If empty, LibRaw cameras will not be included.
+Default: `https://raw.githubusercontent.com/darktable-org/darktable/master/src/imageio/imageio_libraw.c`
   
 ### -rawspeed
 
-rawspeed `cameras.xml` location.
-Default: `https://github.com/darktable-org/rawspeed/blob/develop/data/cameras.xml`
+`cameras.xml` location.
+Default: `https://raw.githubusercontent.com/darktable-org/rawspeed/develop/data/cameras.xml`
 
 ### -wbpresets
 
 `wb_presets.json` location.
-Default: `https://github.com/darktable-org/darktable/blob/master/data/wb_presets.json`
+Default: `https://raw.githubusercontent.com/darktable-org/darktable/master/data/wb_presets.json`
 
 ### -noiseprofiles
 
 `noiseprofiles.json` location.
-Default: `https://github.com/darktable-org/darktable/blob/master/data/noiseprofiles.json`
+Default: `https://raw.githubusercontent.com/darktable-org/darktable/master/data/noiseprofiles.json`
   
 ### -stats
 
-Print statistics. Default is `stdout` which prints at the end of normal output to the terminal.
+Print statistics.
+`stdout` prints at the end of normal output to the terminal. Default.
 `table` adds stats to table headers.
 `all` does both.
+`none` prints nothing.
 
 ### -format
 
@@ -36,6 +38,7 @@ Output format.
 `md`, the default, is Markdown table.
 `html` is HTML table.
 `tsv` is tab separated values.
+`none` creates no output. Useful if only interested in statistics.
   
 ### -headers
   
@@ -50,9 +53,9 @@ See the `camera` struct in `camera-support.go` for valid fields.
 
 Include unsupported cameras. Also affects statistics.
 
-### -out
+### <output path>
 
-Output file. Default is stdout.
+Output file. If not supplied, default is stdout.
 
 ### -h / -help
 
