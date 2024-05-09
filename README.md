@@ -53,7 +53,7 @@ See the `camera` struct in `camera-support.go` for valid fields.
 
 Include unsupported cameras. Also affects statistics.
 
-### <output path>
+### \<output path\>
 
 Output file. If not supplied, default is stdout.
 
