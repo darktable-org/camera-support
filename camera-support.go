@@ -24,7 +24,7 @@ type camera struct {
 	WBPresets     bool
 	NoiseProfiles bool
 	RSSupported   string // rawspeed support
-	Decoder       string // rawspeed | libraw
+	Decoder       string // rawspeed / libraw / unknown
 }
 
 type stats struct {
@@ -32,7 +32,8 @@ type stats struct {
 	aliases       int
 	rawspeed      int
 	libraw        int
-	generic       int
+	unknown       int
+	unsupported   int
 	wbPresets     int
 	noiseProfiles int
 }
@@ -44,8 +45,9 @@ func main() {
 		wbpresetsPath     string
 		noiseprofilesPath string
 		stats             bool
-		outputFormat      string
-		outputFile        string
+		format            string
+		unsupported       bool
+		out               string
 	}
 
 	flag.StringVar(&options.rawspeedPath, "rawspeed", "data/cameras.xml", "rawspeed cameras.xml location. URL or relative local path")
@@ -53,22 +55,24 @@ func main() {
 	flag.StringVar(&options.wbpresetsPath, "wbpresets", "data/wb_presets.json", "wb_presets.json location. URL or relative local path")
 	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "data/noiseprofiles.json", "noiseprofiles.json location. URL or relative local path")
 	flag.BoolVar(&options.stats, "stats", false, "Print statistics")
-	flag.StringVar(&options.outputFormat, "format", "tsv", "Output format")
-	flag.StringVar(&options.outputFile, "out", "", "Output file")
+	flag.StringVar(&options.format, "format", "tsv", "Output format")
+	flag.BoolVar(&options.unsupported, "unsupported", false, "Include unsupported cameras. Also affects statistics.")
+	flag.StringVar(&options.out, "out", "", "Output file")
 	flag.Parse()
 
 	cameras := map[string]camera{}
 
-	loadCamerasXML(cameras, options.rawspeedPath)
+	loadRawspeed(cameras, options.rawspeedPath)
 	loadLibRaw(cameras, options.librawPath)
 
 	loadWBPresets(cameras, options.wbpresetsPath)
 	loadNoiseProfiles(cameras, options.noiseprofilesPath)
 
-	stats := generateStats(cameras)
+	stats := generateStats(cameras, options.unsupported)
 
 	////  Output  ////
 
+	// Maps can't be sorted, so create a separate slice for the printing order
 	camerasOrder := make([]string, 0, len(cameras))
 	for k := range cameras {
 		camerasOrder = append(camerasOrder, k)
@@ -85,7 +89,8 @@ func main() {
 		fmt.Println("\nCameras:\t", stats.cameras)
 		fmt.Println("  rawspeed:\t", stats.rawspeed)
 		fmt.Println("  LibRaw:\t", stats.libraw)
-		fmt.Println("  Generic:\t", stats.generic)
+		fmt.Println("  Unknown:\t", stats.unknown)
+		fmt.Println("  Unsupported:\t", stats.unsupported)
 		fmt.Println("Aliases:\t", stats.aliases)
 		fmt.Println("WB Presets:\t", stats.wbPresets)
 		fmt.Println("Noise Profiles:\t", stats.noiseProfiles)
@@ -118,7 +123,7 @@ func getData(path string) []byte {
 	}
 }
 
-func loadCamerasXML(cameras map[string]camera, path string) {
+func loadRawspeed(cameras map[string]camera, path string) {
 	camerasXML := etree.NewDocument()
 	if err := camerasXML.ReadFromBytes(getData(path)); err != nil {
 		log.Fatal(err)
@@ -279,7 +284,7 @@ func loadWBPresets(cameras map[string]camera, path string) {
 			key := strings.ToLower(v.Maker + " " + m.Model)
 			camera := cameras[key]
 			if camera.Maker == "" {
-				camera.Decoder = "generic"
+				camera.Decoder = "unknown"
 			}
 			camera.Maker = v.Maker
 			camera.Model = m.Model
@@ -312,7 +317,7 @@ func loadNoiseProfiles(cameras map[string]camera, path string) {
 			key := strings.ToLower(v.Maker + " " + m.Model)
 			camera := cameras[key]
 			if camera.Maker == "" {
-				camera.Decoder = "generic"
+				camera.Decoder = "unknown"
 			}
 			camera.Maker = v.Maker
 			camera.Model = m.Model
@@ -322,31 +327,25 @@ func loadNoiseProfiles(cameras map[string]camera, path string) {
 	}
 }
 
-func generateStats(cameras map[string]camera) stats {
+func generateStats(cameras map[string]camera, unsupported bool) stats {
 
-	s := stats{
-		cameras:       0,
-		aliases:       0,
-		rawspeed:      0,
-		libraw:        0,
-		generic:       0,
-		wbPresets:     0,
-		noiseProfiles: 0,
-	}
+	s := stats{}
 
 	for _, c := range cameras {
-		if c.Decoder == "" {
-			// We only want actually supported cameras
+		if c.Decoder == "" && unsupported == false {
 			continue
+		} else if c.Decoder == "" && unsupported == true {
+			s.cameras += 1
+			s.unsupported += 1
 		} else if c.Decoder == "rawspeed" {
 			s.cameras += 1
 			s.rawspeed += 1
 		} else if c.Decoder == "libraw" {
 			s.cameras += 1
 			s.libraw += 1
-		} else if c.Decoder == "generic" {
+		} else if c.Decoder == "unknown" {
 			s.cameras += 1
-			s.generic += 1
+			s.unknown += 1
 		}
 
 		s.aliases += len(c.Aliases)
