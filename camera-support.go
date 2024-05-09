@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/csv"
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -59,7 +60,7 @@ func main() {
 	cameras := map[string]camera{}
 
 	loadCamerasXML(cameras, options.rawspeedPath)
-	loadLibRawTSV(cameras, options.librawPath)
+	loadLibRaw(cameras, options.librawPath)
 
 	loadWBPresets(cameras, options.wbpresetsPath)
 	loadNoiseProfiles(cameras, options.noiseprofilesPath)
@@ -187,73 +188,71 @@ func loadCamerasXML(cameras map[string]camera, path string) {
 	}
 }
 
-func loadLibRawTSV(cameras map[string]camera, path string) {
-	librawData := getData(path)
-	librawTSV := strings.NewReader(string(librawData))
+func loadLibRaw(cameras map[string]camera, path string) {
+	inStruct := false
+	maker := ""
+	model := ""
+	alias := ""
 
-	reader := csv.NewReader(librawTSV)
-	reader.Comma = '\t'
-	reader.Read() // use Read to remove the first line
-	rows, err := reader.ReadAll()
-	if err != nil {
-		log.Println("Cannot read libraw.tsv:", err)
+	librawData := string(getData(path))
+
+	scanner := bufio.NewScanner(strings.NewReader(librawData))
+	for scanner.Scan() {
+		matchMaker := false
+		matchModel := false
+		matchAlias := false
+
+		line := scanner.Text()
+
+		if strings.Contains(line, "const model_map_t modelMap[] = {") {
+			inStruct = true
+			continue
+		} else if inStruct == false {
+			continue
+		} else if strings.Contains(line, "};") && inStruct == true {
+			break
+		}
+
+		matchMaker = strings.Contains(line, ".clean_make =")
+		matchModel = strings.Contains(line, ".clean_model =")
+		matchAlias = strings.Contains(line, ".clean_alias =")
+
+		re := regexp.MustCompile(`".+"`)
+		foundStr := strings.Trim(re.FindString(line), "\"")
+		if matchMaker == true {
+			maker = foundStr
+		} else if matchModel == true {
+			model = foundStr
+		} else if matchAlias == true {
+			alias = foundStr
+		}
+
+		if strings.Contains(line, "},") {
+			key := strings.ToLower(maker + " " + model)
+			camera := cameras[key]
+
+			if model != alias {
+				// Ensure no duplicate aliases
+				aliasesCurrent := make(map[string]struct{})
+				for _, a := range camera.Aliases {
+					aliasesCurrent[strings.ToLower(a)] = struct{}{}
+				}
+				_, ok := aliasesCurrent[strings.ToLower(alias)]
+				if ok == false {
+					camera.Aliases = append(camera.Aliases, alias)
+				}
+			}
+
+			camera.Decoder = "libraw"
+			cameras[key] = camera
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal("Error occurred:", err)
 	}
 
-	for _, c := range rows {
-
-		maker := c[0]
-		model := c[1]
-		aliases := c[2]
-		formats := c[3]
-		key := strings.ToLower(maker + " " + model)
-
-		camera := cameras[key]
-		camera.Maker = maker
-		camera.Model = model
-
-		if aliases != "" {
-			// Use a set to ensure no duplicate aliases
-			set := make(map[string]struct{})
-			if len(camera.Aliases) >= 1 {
-				for _, a := range camera.Aliases {
-					set[a] = struct{}{}
-				}
-			}
-
-			for _, a := range strings.Split(aliases, ";") {
-				a := strings.Trim(a, " ")
-				set[a] = struct{}{}
-			}
-
-			camera.Aliases = nil
-			for k := range set {
-				camera.Aliases = append(camera.Aliases, k)
-			}
-		}
-
-		if formats != "" {
-			// Use a set to ensure no duplicate formats
-			set := make(map[string]struct{})
-			if len(camera.Formats) >= 1 {
-				for _, f := range camera.Formats {
-					set[f] = struct{}{}
-				}
-			}
-
-			for _, f := range strings.Split(formats, ";") {
-				f := strings.Trim(f, " ")
-				set[f] = struct{}{}
-			}
-
-			camera.Formats = nil
-			for k := range set {
-				camera.Formats = append(camera.Formats, k)
-			}
-		}
-
-		camera.Decoder = "libraw"
-
-		cameras[key] = camera
+	if inStruct == false {
+		log.Fatal("No LibRaw cameras found in ", path)
 	}
 }
 
