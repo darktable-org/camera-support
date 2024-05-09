@@ -44,26 +44,38 @@ func main() {
 		librawPath        string
 		wbpresetsPath     string
 		noiseprofilesPath string
-		stats             bool
+		stats             string
 		format            string
+		headers           string
+		fields            string
 		unsupported       bool
-		out               string
+		output            string
 	}
 
-	flag.StringVar(&options.rawspeedPath, "rawspeed", "data/cameras.xml", "rawspeed cameras.xml location. URL or relative local path")
-	flag.StringVar(&options.librawPath, "libraw", "data/libraw.tsv", "libraw.tsv location. URL or relative local path")
-	flag.StringVar(&options.wbpresetsPath, "wbpresets", "data/wb_presets.json", "wb_presets.json location. URL or relative local path")
-	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "data/noiseprofiles.json", "noiseprofiles.json location. URL or relative local path")
-	flag.BoolVar(&options.stats, "stats", false, "Print statistics")
-	flag.StringVar(&options.format, "format", "tsv", "Output format")
+	flag.StringVar(&options.rawspeedPath, "rawspeed", "https://raw.githubusercontent.com/darktable-org/rawspeed/develop/data/cameras.xml", "'cameras.xml' location.")
+	flag.StringVar(&options.librawPath, "libraw", "https://raw.githubusercontent.com/darktable-org/darktable/master/src/imageio/imageio_libraw.c", "'imageio_libraw.c' location. If empty, LibRaw cameras will not be included.")
+	flag.StringVar(&options.wbpresetsPath, "wbpresets", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/wb_presets.json", "'wb_presets.json' location.")
+	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/noiseprofiles.json", "'noiseprofiles.json' location.")
+	flag.StringVar(&options.stats, "stats", "stdout", "Print statistics. <stdout|table|all|none>")
+	flag.StringVar(&options.format, "format", "md", "Output format. <md|html|tsv|none>")
+	flag.StringVar(&options.headers, "headers", "", "Segments tables by maker, adding a header using the specified level. <h1-h6>")
+	flag.StringVar(&options.fields, "fields", "", "Comma delimited list of fields to print. Default is all. See the 'camera' struct in 'camera-support.go' for valid fields.")
 	flag.BoolVar(&options.unsupported, "unsupported", false, "Include unsupported cameras. Also affects statistics.")
-	flag.StringVar(&options.out, "out", "", "Output file")
 	flag.Parse()
+
+	if flag.Arg(0) != "" {
+		options.output = flag.Arg(0)
+	} else {
+		options.output = "stdout"
+	}
 
 	cameras := map[string]camera{}
 
 	loadRawspeed(cameras, options.rawspeedPath)
-	loadLibRaw(cameras, options.librawPath)
+
+	if options.librawPath != "" {
+		loadLibRaw(cameras, options.librawPath)
+	}
 
 	loadWBPresets(cameras, options.wbpresetsPath)
 	loadNoiseProfiles(cameras, options.noiseprofilesPath)
@@ -72,21 +84,31 @@ func main() {
 
 	////  Output  ////
 
-	// Maps can't be sorted, so create a separate slice for the printing order
+	// Maps can't be sorted, so create a separate sorted slice for the printing order
 	camerasOrder := make([]string, 0, len(cameras))
 	for k := range cameras {
 		camerasOrder = append(camerasOrder, k)
 	}
-
 	sort.Strings(camerasOrder)
 
-	for _, k := range camerasOrder {
-		c := cameras[k]
-		fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats), "/", k)
+	if options.format == "md" {
+		_ = generateMD(cameras, camerasOrder, options.unsupported)
+	} else if options.format == "html" {
+		_ = generateHTML(cameras, camerasOrder, options.unsupported)
+	} else if options.format == "tsv" {
+		_ = generateTSV(cameras, camerasOrder, options.unsupported)
+	} else if options.format == "debug" {
+		for _, k := range camerasOrder {
+			c := cameras[k]
+			fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats), "/", k)
+		}
 	}
 
-	if options.stats == true {
-		fmt.Println("\nCameras:\t", stats.cameras)
+	if options.stats == "stdout" || options.stats == "" {
+		if options.output == "stdout" && options.format != "none" {
+			fmt.Println("\r")
+		}
+		fmt.Println("Cameras:\t", stats.cameras)
 		fmt.Println("  rawspeed:\t", stats.rawspeed)
 		fmt.Println("  LibRaw:\t", stats.libraw)
 		fmt.Println("  Unknown:\t", stats.unknown)
@@ -253,7 +275,7 @@ func loadLibRaw(cameras map[string]camera, path string) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		log.Fatal("Error occurred:", err)
+		log.Fatal("Error occurred: ", err)
 	}
 
 	if inStruct == false {
@@ -360,4 +382,31 @@ func generateStats(cameras map[string]camera, unsupported bool) stats {
 	}
 
 	return s
+}
+
+func generateMD(cameras map[string]camera, camerasOrder []string, unsupported bool) string {
+	_ = cameras
+	_ = camerasOrder
+	_ = unsupported
+
+	fmt.Println("Generate MD")
+	return ""
+}
+
+func generateHTML(cameras map[string]camera, camerasOrder []string, unsupported bool) string {
+	_ = cameras
+	_ = camerasOrder
+	_ = unsupported
+
+	fmt.Println("Generate HTML")
+	return ""
+}
+
+func generateTSV(cameras map[string]camera, camerasOrder []string, unsupported bool) string {
+	_ = cameras
+	_ = camerasOrder
+	_ = unsupported
+
+	fmt.Println("Generate TSV")
+	return ""
 }
