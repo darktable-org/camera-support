@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -20,12 +22,12 @@ type camera struct {
 	Maker         string
 	Model         string
 	Aliases       []string
-	Formats       []string // rawspeed modes
+	Formats       []string // RawSpeed modes
 	WBPresets     bool
 	NoiseProfiles bool
-	RSSupported   string // rawspeed support
-	Decoder       string // rawspeed / libraw / unknown
-	Annotations   []string
+	RSSupported   string // RawSpeed support
+	Decoder       string // RawSpeed | LibRaw | Unknown
+	Debug         []string
 }
 
 type stats struct {
@@ -48,7 +50,8 @@ func main() {
 		stats             string
 		format            string
 		headers           string
-		fields            string
+		fields            []string
+		bools             []string
 		unsupported       bool
 		output            string
 	}
@@ -60,19 +63,52 @@ func main() {
 	flag.StringVar(&options.stats, "stats", "stdout", "Print statistics. <stdout|table|all|none>")
 	flag.StringVar(&options.format, "format", "md", "Output format. <md|html|tsv|none>")
 	flag.StringVar(&options.headers, "headers", "", "Segments tables by maker, adding a header using the specified level. <h1-h6>")
-	flag.StringVar(&options.fields, "fields", "", "Comma delimited list of fields to print. Default is all. See the 'camera' struct in 'camera-support.go' for valid fields.")
+
+	flag.Func("fields", "Comma delimited list of fields to print. See the 'camera' struct in 'camera-support.go' for valid fields.", func(s string) error {
+		// Default is defined under unset flag handling
+		if s == "all" {
+			s = "Maker,Model,Aliases,WBPresets,NoiseProfiles,Decoder,RSSupported,Formats"
+		} else if s == "debug" {
+			s = "Maker,Model,Aliases,WBPresets,NoiseProfiles,Decoder,RSSupported,Formats,Debug"
+		} else if s == "no-maker" {
+			s = "Model,Aliases,WBPresets,NoiseProfiles,Decoder"
+		}
+		options.fields = strings.Split(s, ",")
+		return nil
+	})
+
+	flag.Func("bools", "Text to use for boolean fields. Format is \"true,false\" with a comma delimiter.", func(s string) error {
+		// Default is defined under unset flag handling
+		if strings.Count(s, ",") != 1 {
+			return errors.New("Must contain one comma")
+		}
+		options.bools = strings.Split(s, ",")
+		return nil
+	})
+
 	flag.BoolVar(&options.unsupported, "unsupported", false, "Include unsupported cameras. Also affects statistics.")
 	flag.Parse()
 
+	// Non-flag options
 	if flag.Arg(0) != "" {
 		options.output = flag.Arg(0)
 	} else {
 		options.output = "stdout"
 	}
 
+	// Handle unset flags
+	if options.fields == nil {
+		options.fields = append(options.fields, "Maker", "Model", "Aliases", "WBPresets", "NoiseProfiles", "Decoder")
+	}
+	if options.bools == nil {
+		options.bools = append(options.bools, "yes", "no")
+	}
+
+	//// Logic ////
+
 	cameras := map[string]camera{}
 
-	loadRawspeed(cameras, options.rawspeedPath)
+	loadRawSpeed(cameras, options.rawspeedPath)
 
 	if options.librawPath != "" {
 		loadLibRaw(cameras, options.librawPath)
@@ -101,16 +137,16 @@ func main() {
 	} else if options.format == "debug" {
 		for _, k := range camerasOrder {
 			c := cameras[k]
-			fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats), "/", c.Annotations, "/", k)
+			fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats), "/", c.Debug, "/", k)
 		}
 	}
 
-	if options.stats == "stdout" || options.stats == "" {
+	if options.stats == "stdout" || options.stats == "all" {
 		if options.output == "stdout" && options.format != "none" {
 			fmt.Println("\r")
 		}
 		fmt.Println("Cameras:\t", stats.cameras)
-		fmt.Println("  rawspeed:\t", stats.rawspeed)
+		fmt.Println("  RawSpeed:\t", stats.rawspeed)
 		fmt.Println("  LibRaw:\t", stats.libraw)
 		fmt.Println("  Unknown:\t", stats.unknown)
 		fmt.Println("  Unsupported:\t", stats.unsupported)
@@ -146,7 +182,7 @@ func getData(path string) []byte {
 	}
 }
 
-func loadRawspeed(cameras map[string]camera, path string) {
+func loadRawSpeed(cameras map[string]camera, path string) {
 	camerasXML := etree.NewDocument()
 	if err := camerasXML.ReadFromBytes(getData(path)); err != nil {
 		log.Fatal(err)
@@ -156,6 +192,7 @@ func loadRawspeed(cameras map[string]camera, path string) {
 	for _, c := range root.SelectElements("Camera") {
 		maker := ""
 		model := ""
+		debug := make([]string, 0, 3)
 		key := ""
 
 		if id := c.SelectElement("ID"); id != nil {
@@ -170,10 +207,9 @@ func loadRawspeed(cameras map[string]camera, path string) {
 			// fmt.Println("= No ID element")
 			// fmt.Println("  "+make, "/ "+model)
 
-			// if model == "" {
-			// 	fmt.Println("= No Model in Camera element")
-			// 	fmt.Println("  "+make, "/ "+model)
-			// }
+			if model == "" {
+				debug = append(debug, "cameras.xml: No Model in Camera element")
+			}
 		}
 
 		camera := cameras[key]
@@ -181,7 +217,6 @@ func loadRawspeed(cameras map[string]camera, path string) {
 		camera.Model = model
 
 		if aliases := c.SelectElement("Aliases"); aliases != nil {
-			// fmt.Println("== " + key + " Aliases ==")
 			for _, a := range aliases.SelectElements("Alias") {
 				alias := ""
 				id := a.SelectAttrValue("id", "")
@@ -191,6 +226,7 @@ func loadRawspeed(cameras map[string]camera, path string) {
 					// Not ideal, but probably the best that can be done for now
 					// Would be better if cameras.xml was consistent
 					alias, _ = strings.CutPrefix(val, maker+" ")
+					debug = append(debug, "cameras.xml: No id in Alias")
 				} else {
 					alias = id
 				}
@@ -198,6 +234,8 @@ func loadRawspeed(cameras map[string]camera, path string) {
 				// fmt.Println("  val:\t" + val)
 				// fmt.Println("  alias:\t" + alias)
 				camera.Aliases = append(camera.Aliases, alias)
+				slices.Sort(camera.Aliases)
+				camera.Aliases = slices.Compact(camera.Aliases)
 			}
 		}
 
@@ -209,10 +247,12 @@ func loadRawspeed(cameras map[string]camera, path string) {
 
 		camera.RSSupported = c.SelectAttrValue("supported", "")
 		if camera.RSSupported == "" {
-			camera.Decoder = "rawspeed"
+			camera.Decoder = "RawSpeed"
 		}
 
-		camera.Annotations = append(camera.Annotations, "cameras.xml")
+		camera.Debug = append(camera.Debug, debug...)
+		slices.Sort(camera.Debug)
+		camera.Debug = slices.Compact(camera.Debug)
 
 		cameras[key] = camera
 	}
@@ -273,8 +313,7 @@ func loadLibRaw(cameras map[string]camera, path string) {
 				}
 			}
 
-			camera.Decoder = "libraw"
-			camera.Annotations = append(camera.Annotations, "imageio_libraw.c")
+			camera.Decoder = "LibRaw"
 			cameras[key] = camera
 		}
 	}
@@ -310,12 +349,12 @@ func loadWBPresets(cameras map[string]camera, path string) {
 			key := strings.ToLower(v.Maker + " " + m.Model)
 			camera := cameras[key]
 			if camera.Maker == "" {
-				camera.Decoder = "unknown"
+				camera.Decoder = "Unknown"
+				camera.Debug = append(camera.Debug, "Source: wb_presets.json")
 			}
 			camera.Maker = v.Maker
 			camera.Model = m.Model
 			camera.WBPresets = true
-			camera.Annotations = append(camera.Annotations, "wb_presets.json")
 			cameras[key] = camera
 		}
 	}
@@ -344,12 +383,12 @@ func loadNoiseProfiles(cameras map[string]camera, path string) {
 			key := strings.ToLower(v.Maker + " " + m.Model)
 			camera := cameras[key]
 			if camera.Maker == "" {
-				camera.Decoder = "unknown"
+				camera.Decoder = "Unknown"
+				camera.Debug = append(camera.Debug, "Source: noiseprofiles.json")
 			}
 			camera.Maker = v.Maker
 			camera.Model = m.Model
 			camera.NoiseProfiles = true
-			camera.Annotations = append(camera.Annotations, "noiseprofiles.json")
 			cameras[key] = camera
 		}
 	}
@@ -363,16 +402,12 @@ func generateStats(cameras map[string]camera, unsupported bool) stats {
 		if c.Decoder == "" && unsupported == false {
 			continue
 		} else if c.Decoder == "" && unsupported == true {
-			s.cameras += 1
 			s.unsupported += 1
-		} else if c.Decoder == "rawspeed" {
-			s.cameras += 1
+		} else if c.Decoder == "RawSpeed" {
 			s.rawspeed += 1
-		} else if c.Decoder == "libraw" {
-			s.cameras += 1
+		} else if c.Decoder == "LibRaw" {
 			s.libraw += 1
-		} else if c.Decoder == "unknown" {
-			s.cameras += 1
+		} else if c.Decoder == "Unknown" {
 			s.unknown += 1
 		}
 
@@ -385,6 +420,8 @@ func generateStats(cameras map[string]camera, unsupported bool) stats {
 		if c.WBPresets == true {
 			s.wbPresets += 1
 		}
+
+		s.cameras += 1
 	}
 
 	return s
