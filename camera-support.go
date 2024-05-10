@@ -64,11 +64,11 @@ func main() {
 	flag.StringVar(&options.format, "format", "md", "Output format. <md|html|tsv|none>")
 	flag.StringVar(&options.headers, "headers", "", "Segments tables by maker, adding a header using the specified level. <h1-h6>")
 
-	flag.Func("fields", "Comma delimited list of fields to print. See the 'camera' struct in 'camera-support.go' for valid fields.", func(s string) error {
+	flag.Func("fields", "Comma delimited list of fields to print. See the 'camera' struct in 'camera-support.go' for valid fields. <...|no-maker|all|all-debug>", func(s string) error {
 		// Default is defined under unset flag handling
 		if s == "all" {
 			s = "Maker,Model,Aliases,WBPresets,NoiseProfiles,Decoder,RSSupported,Formats"
-		} else if s == "debug" {
+		} else if s == "all-debug" {
 			s = "Maker,Model,Aliases,WBPresets,NoiseProfiles,Decoder,RSSupported,Formats,Debug"
 		} else if s == "no-maker" {
 			s = "Model,Aliases,WBPresets,NoiseProfiles,Decoder"
@@ -128,17 +128,24 @@ func main() {
 	}
 	sort.Strings(camerasOrder)
 
+	if options.format != "none" {
+		data := prepareOutputData(cameras, camerasOrder, options.fields, options.bools, options.unsupported)
+		_ = data
+	}
+
 	if options.format == "md" {
-		_ = generateMD(cameras, camerasOrder, options.unsupported)
+		// _ = generateMD(cameras, camerasOrder, options.unsupported)
 	} else if options.format == "html" {
-		_ = generateHTML(cameras, camerasOrder, options.unsupported)
+		// _ = generateHTML(cameras, camerasOrder, options.unsupported)
 	} else if options.format == "tsv" {
-		_ = generateTSV(cameras, camerasOrder, options.unsupported)
+		// _ = generateTSV(cameras, camerasOrder, options.fields)
 	} else if options.format == "debug" {
 		for _, k := range camerasOrder {
 			c := cameras[k]
 			fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats), "/", c.Debug, "/", k)
 		}
+	} else {
+		log.Fatalf("Invalid format string: %v\n", options.format)
 	}
 
 	if options.stats == "stdout" || options.stats == "all" {
@@ -427,28 +434,74 @@ func generateStats(cameras map[string]camera, unsupported bool) stats {
 	return s
 }
 
-func generateMD(cameras map[string]camera, camerasOrder []string, unsupported bool) string {
-	_ = cameras
-	_ = camerasOrder
-	_ = unsupported
+func prepareOutputData(cameras map[string]camera, camerasOrder []string, fields []string, bools []string, unsupported bool) [][]string {
+	data := make([][]string, 0, len(cameras))
+	for _, k := range camerasOrder {
+		c := cameras[k]
 
-	fmt.Println("Generate MD")
-	return ""
+		if unsupported == false && c.Decoder == "" {
+			continue
+		}
+
+		row := make([]string, 0, len(fields))
+
+		// First two fields in row are always cameras key and Maker, even if not requested
+		// They are needed when generating the output
+		row = append(row, k)
+		row = append(row, c.Maker)
+
+		for _, f := range fields {
+			switch strings.ToLower(f) {
+			case "maker":
+				row = append(row, c.Maker)
+			case "model":
+				row = append(row, c.Model)
+			case "aliases":
+				row = append(row, strings.Join(c.Aliases, ", "))
+			case "formats":
+				row = append(row, strings.Join(c.Formats, ", "))
+			case "wbpresets":
+				row = append(row, bools[0])
+			case "noiseprofiles":
+				row = append(row, bools[1])
+			case "rssupported":
+				row = append(row, c.RSSupported)
+			case "decoder":
+				row = append(row, c.Decoder)
+			case "debug":
+				row = append(row, strings.Join(c.Debug, ", "))
+			}
+		}
+
+		// fmt.Println(strings.Join(row, " / "))
+		data = append(data, row)
+	}
+
+	return data
 }
 
-func generateHTML(cameras map[string]camera, camerasOrder []string, unsupported bool) string {
+// func generateMD(cameras map[string]camera, camerasOrder []string, fields []string, headers string, bools []string, stats string, unsupported bool) string {
+// func generateMD(cameras map[string]camera, fields []string, headers string, bools []string, stats string, unsupported bool) string {
+// 	_ = cameras
+// 	_ = camerasOrder
+// 	_ = unsupported
+
+// 	fmt.Println("Generate MD")
+// 	return ""
+// }
+
+func generateHTML(cameras map[string]camera, unsupported bool) string {
 	_ = cameras
-	_ = camerasOrder
 	_ = unsupported
 
 	fmt.Println("Generate HTML")
 	return ""
 }
 
-func generateTSV(cameras map[string]camera, camerasOrder []string, unsupported bool) string {
+func generateTSV(data [][]string, cameras map[string]camera, fields []string) string {
+	_ = data
 	_ = cameras
-	_ = camerasOrder
-	_ = unsupported
+	_ = fields
 
 	fmt.Println("Generate TSV")
 	return ""
