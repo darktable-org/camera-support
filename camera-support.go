@@ -121,31 +121,28 @@ func main() {
 
 	////  Output  ////
 
-	// Maps can't be sorted, so create a separate sorted slice for the printing order
-	camerasOrder := make([]string, 0, len(cameras))
-	for k := range cameras {
-		camerasOrder = append(camerasOrder, k)
-	}
-	sort.Strings(camerasOrder)
-
 	if options.format != "none" {
-		data := prepareOutputData(cameras, camerasOrder, options.fields, options.bools, options.unsupported)
-		_ = data
-	}
+		data := prepareOutputData(cameras, options.fields, options.bools, options.unsupported)
+		// for _, r := range data {
+		// 	fmt.Println(strings.Join(r, " / "))
+		// }
 
-	if options.format == "md" {
-		// _ = generateMD(cameras, camerasOrder, options.unsupported)
-	} else if options.format == "html" {
-		// _ = generateHTML(cameras, camerasOrder, options.unsupported)
-	} else if options.format == "tsv" {
-		// _ = generateTSV(cameras, camerasOrder, options.fields)
-	} else if options.format == "debug" {
-		for _, k := range camerasOrder {
-			c := cameras[k]
-			fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats), "/", c.Debug, "/", k)
+		if options.format == "md" {
+			// _ = generateMD(cameras, camerasOrder, options.unsupported)
+		} else if options.format == "html" {
+			// _ = generateHTML(cameras, camerasOrder, options.unsupported)
+		} else if options.format == "tsv" {
+			_ = generateTSV(data, cameras, options.fields)
+		} else {
+			log.Fatalf("Invalid format string: %v\n", options.format)
 		}
-	} else {
-		log.Fatalf("Invalid format string: %v\n", options.format)
+
+		// else if options.format == "debug" {
+		// 	for _, k := range camerasOrder {
+		// 		c := cameras[k]
+		// 		fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats), "/", c.Debug, "/", k)
+		// 	}
+		// }
 	}
 
 	if options.stats == "stdout" || options.stats == "all" {
@@ -434,8 +431,16 @@ func generateStats(cameras map[string]camera, unsupported bool) stats {
 	return s
 }
 
-func prepareOutputData(cameras map[string]camera, camerasOrder []string, fields []string, bools []string, unsupported bool) [][]string {
+func prepareOutputData(cameras map[string]camera, fields []string, bools []string, unsupported bool) [][]string {
 	data := make([][]string, 0, len(cameras))
+
+	// Maps can't be sorted, so use a separate sorted slice for the output order
+	camerasOrder := make([]string, 0, len(cameras))
+	for k := range cameras {
+		camerasOrder = append(camerasOrder, k)
+	}
+	sort.Strings(camerasOrder)
+
 	for _, k := range camerasOrder {
 		c := cameras[k]
 
@@ -443,10 +448,9 @@ func prepareOutputData(cameras map[string]camera, camerasOrder []string, fields 
 			continue
 		}
 
-		row := make([]string, 0, len(fields))
-
 		// First two fields in row are always cameras key and Maker, even if not requested
-		// They are needed when generating the output
+		// They may be needed when generating the output
+		row := make([]string, 0, len(fields)+2)
 		row = append(row, k)
 		row = append(row, c.Maker)
 
@@ -473,7 +477,6 @@ func prepareOutputData(cameras map[string]camera, camerasOrder []string, fields 
 			}
 		}
 
-		// fmt.Println(strings.Join(row, " / "))
 		data = append(data, row)
 	}
 
