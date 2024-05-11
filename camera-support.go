@@ -42,6 +42,18 @@ type stats struct {
 }
 
 func main() {
+	// Having a map inside a struct is obnoxious, so this is not part of options
+	columnHeaders := map[string]string{
+		"maker":         "Maker",
+		"model":         "Model",
+		"aliases":       "Aliases",
+		"wbpresets":     "WB Presets",
+		"noiseprofiles": "Noise Profile",
+		"rssupported":   "RawSpeed Support",
+		"decoder":       "Decoder",
+		"debug":         "Debug",
+	}
+
 	var options struct {
 		rawspeedPath      string
 		librawPath        string
@@ -132,7 +144,7 @@ func main() {
 		} else if options.format == "html" {
 			// _ = generateHTML(cameras, camerasOrder, options.unsupported)
 		} else if options.format == "tsv" {
-			_ = generateTSV(data, cameras, options.fields)
+			_ = generateTSV(data, cameras, options.fields, columnHeaders)
 		} else {
 			log.Fatalf("Invalid format string: %v\n", options.format)
 		}
@@ -501,10 +513,11 @@ func generateHTML(cameras map[string]camera, unsupported bool) string {
 	return ""
 }
 
-func generateTSV(data [][]string, cameras map[string]camera, fields []string) string {
+func generateTSV(data [][]string, cameras map[string]camera, fields []string, colHeaders []string) string {
 	_ = data
 	_ = cameras
 	_ = fields
+	_ = colHeaders
 
 	fmt.Println("Generate TSV")
 	return ""
