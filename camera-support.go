@@ -47,6 +47,7 @@ func main() {
 		"maker":         "Maker",
 		"model":         "Model",
 		"aliases":       "Aliases",
+		"formats":       "Formats",
 		"wbpresets":     "WB Presets",
 		"noiseprofiles": "Noise Profile",
 		"rssupported":   "RawSpeed Support",
@@ -139,22 +140,18 @@ func main() {
 		// 	fmt.Println(strings.Join(r, " / "))
 		// }
 
+		outputString := ""
 		if options.format == "md" {
 			// _ = generateMD(cameras, camerasOrder, options.unsupported)
 		} else if options.format == "html" {
 			// _ = generateHTML(cameras, camerasOrder, options.unsupported)
 		} else if options.format == "tsv" {
-			_ = generateTSV(data, cameras, options.fields, columnHeaders)
+			outputString = generateTSV(data, options.fields, columnHeaders)
 		} else {
 			log.Fatalf("Invalid format string: %v\n", options.format)
 		}
 
-		// else if options.format == "debug" {
-		// 	for _, k := range camerasOrder {
-		// 		c := cameras[k]
-		// 		fmt.Println(c.Maker, "/ "+c.Model, "/ "+c.Decoder, "/", c.WBPresets, "/", c.NoiseProfiles, "/ "+c.RSSupported+" /", c.Aliases, len(c.Aliases), "/", c.Formats, len(c.Formats), "/", c.Debug, "/", k)
-		// 	}
-		// }
+		fmt.Print(outputString)
 	}
 
 	if options.stats == "stdout" || options.stats == "all" {
@@ -477,9 +474,17 @@ func prepareOutputData(cameras map[string]camera, fields []string, bools []strin
 			case "formats":
 				row = append(row, strings.Join(c.Formats, ", "))
 			case "wbpresets":
-				row = append(row, bools[0])
+				if c.WBPresets == true {
+					row = append(row, bools[0])
+				} else {
+					row = append(row, bools[1])
+				}
 			case "noiseprofiles":
-				row = append(row, bools[1])
+				if c.NoiseProfiles == true {
+					row = append(row, bools[0])
+				} else {
+					row = append(row, bools[1])
+				}
 			case "rssupported":
 				row = append(row, c.RSSupported)
 			case "decoder":
@@ -496,7 +501,8 @@ func prepareOutputData(cameras map[string]camera, fields []string, bools []strin
 }
 
 // func generateMD(cameras map[string]camera, camerasOrder []string, fields []string, headers string, bools []string, stats string, unsupported bool) string {
-// func generateMD(cameras map[string]camera, fields []string, headers string, bools []string, stats string, unsupported bool) string {
+// }
+// func generateMD(cameras map[string]camera, fields []string, colHeaders map[string]string, headers string, bools []string, stats string, unsupported bool) string {
 // 	_ = cameras
 // 	_ = camerasOrder
 // 	_ = unsupported
@@ -513,12 +519,17 @@ func generateHTML(cameras map[string]camera, unsupported bool) string {
 	return ""
 }
 
-func generateTSV(data [][]string, cameras map[string]camera, fields []string, colHeaders []string) string {
-	_ = data
-	_ = cameras
-	_ = fields
-	_ = colHeaders
+func generateTSV(data [][]string, fields []string, colHeaders map[string]string) string {
+	headers := make([]string, 0, len(fields))
+	for _, f := range fields {
+		headers = append(headers, colHeaders[strings.ToLower(f)])
+	}
 
-	fmt.Println("Generate TSV")
-	return ""
+	tsvData := strings.Builder{}
+	tsvData.WriteString(fmt.Sprintf("%v\n", strings.Join(headers, "\t")))
+	for _, r := range data {
+		tsvData.WriteString(fmt.Sprintf("%v\n", strings.Join(r[2:], "\t")))
+	}
+
+	return tsvData.String()
 }
