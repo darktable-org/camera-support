@@ -36,13 +36,12 @@ Print statistics.
 
 Output format.
 `md`, the default, is Markdown table.
-`html` is HTML table.
 `tsv` is tab separated values.
 `none` creates no output. Useful if only interested in statistics.
   
 ### -headers
   
-Segments tables by maker, adding a header using the specified level (h1-h6).
+Segments tables by maker, adding a header using the specified level (1-6).
   
 ### -fields
 

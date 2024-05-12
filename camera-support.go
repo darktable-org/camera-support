@@ -75,7 +75,7 @@ func main() {
 	flag.StringVar(&options.wbpresetsPath, "wbpresets", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/wb_presets.json", "'wb_presets.json' location.")
 	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/noiseprofiles.json", "'noiseprofiles.json' location.")
 	flag.StringVar(&options.stats, "stats", "stdout", "Print statistics. <stdout|table|all|none>")
-	flag.StringVar(&options.format, "format", "md", "Output format. <md|html|tsv|none>")
+	flag.StringVar(&options.format, "format", "md", "Output format. <md|tsv|none>")
 
 	flag.Func("segments", "Segments tables by maker, adding a header using the specified level. <1-6>", func(s string) error {
 		i, err := strconv.Atoi(s)
@@ -149,8 +149,6 @@ func main() {
 		outputString := ""
 		if options.format == "md" {
 			outputString = generateMD(data, options.fields, columnHeaders, options.segments, options.stats, stats)
-		} else if options.format == "html" {
-			// _ = generateHTML(cameras, camerasOrder, options.unsupported)
 		} else if options.format == "tsv" {
 			outputString = generateTSV(data, options.fields, columnHeaders)
 		} else {
@@ -216,13 +214,10 @@ func loadRawSpeed(cameras map[string]camera, path string, unsupported bool) {
 			maker = id.SelectAttrValue("make", "")
 			model = id.SelectAttrValue("model", "")
 			key = strings.ToLower(maker + " " + model)
-		} else {
+		} else { // No ID element so get from Camera
 			maker = c.SelectAttrValue("make", "")
 			model = c.SelectAttrValue("model", "")
 			key = strings.ToLower(maker + " " + model)
-
-			// fmt.Println("= No ID element")
-			// fmt.Println("  "+make, "/ "+model)
 
 			if model == "" {
 				debug = append(debug, "cameras.xml: No Model in Camera element")
@@ -580,14 +575,6 @@ func contructTableRow(fields []string, colWidths []int) string {
 		}
 	}
 	return tableRow.String()
-}
-
-func generateHTML(cameras map[string]camera, unsupported bool) string {
-	_ = cameras
-	_ = unsupported
-
-	fmt.Println("Generate HTML")
-	return ""
 }
 
 func generateTSV(data [][]string, fields []string, colHeaders map[string]string) string {
