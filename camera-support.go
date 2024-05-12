@@ -62,7 +62,7 @@ func main() {
 		noiseprofilesPath string
 		stats             string
 		format            string
-		headers           string
+		segments          int
 		fields            []string
 		bools             []string
 		unsupported       bool
@@ -75,7 +75,7 @@ func main() {
 	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/noiseprofiles.json", "'noiseprofiles.json' location.")
 	flag.StringVar(&options.stats, "stats", "stdout", "Print statistics. <stdout|table|all|none>")
 	flag.StringVar(&options.format, "format", "md", "Output format. <md|html|tsv|none>")
-	flag.StringVar(&options.headers, "headers", "", "Segments tables by maker, adding a header using the specified level. <h1-h6>")
+	flag.IntVar(&options.segments, "segments", 0, "Segments tables by maker, adding a header using the specified level. <1-6>")
 
 	flag.Func("fields", "Comma delimited list of fields to print. See the 'camera' struct in 'camera-support.go' for valid fields. <...|no-maker|all|all-debug>", func(s string) error {
 		// Default is defined under unset flag handling
@@ -136,13 +136,10 @@ func main() {
 
 	if options.format != "none" {
 		data := prepareOutputData(cameras, options.fields, options.bools, options.unsupported)
-		// for _, r := range data {
-		// 	fmt.Println(strings.Join(r, " / "))
-		// }
 
 		outputString := ""
 		if options.format == "md" {
-			// _ = generateMD(cameras, camerasOrder, options.unsupported)
+			outputString = generateMD(data, options.fields, columnHeaders, options.segments, options.stats, stats)
 		} else if options.format == "html" {
 			// _ = generateHTML(cameras, camerasOrder, options.unsupported)
 		} else if options.format == "tsv" {
@@ -171,7 +168,6 @@ func main() {
 
 func getData(path string) []byte {
 	if strings.HasPrefix(path, "https://") {
-		// fmt.Println("-- Getting data from URL")
 		res, err := http.Get(path)
 		if err != nil {
 			log.Fatal(err)
@@ -186,7 +182,6 @@ func getData(path string) []byte {
 		}
 		return data
 	} else {
-		// fmt.Println("-- Getting data from local file")
 		data, err := os.ReadFile(path)
 		if err != nil {
 			log.Fatal(err)
@@ -500,16 +495,79 @@ func prepareOutputData(cameras map[string]camera, fields []string, bools []strin
 	return data
 }
 
-// func generateMD(cameras map[string]camera, camerasOrder []string, fields []string, headers string, bools []string, stats string, unsupported bool) string {
-// }
-// func generateMD(cameras map[string]camera, fields []string, colHeaders map[string]string, headers string, bools []string, stats string, unsupported bool) string {
-// 	_ = cameras
-// 	_ = camerasOrder
-// 	_ = unsupported
+func generateMD(data [][]string, fields []string, colHeaders map[string]string, segments int, showStats string, stats stats) string {
+	_ = stats
+	_ = showStats
 
-// 	fmt.Println("Generate MD")
-// 	return ""
-// }
+	// Calculate the widest field in each column, so table cells line up nicely
+	colWidths := make([]int, 0, len(fields))
+	for _, f := range fields {
+		w := len(colHeaders[strings.ToLower(f)])
+		colWidths = append(colWidths, w)
+	}
+	for _, r := range data {
+		for i, f := range r[2:] {
+			w := len(f)
+			if w > colWidths[i] {
+				colWidths[i] = w
+			}
+		}
+	}
+
+	// Table row separator
+	sep := make([]string, 0, len(colWidths))
+	for _, c := range colWidths {
+		sep = append(sep, strings.Repeat("-", c))
+	}
+	tRowSep := contructTableRow(sep, colWidths)
+
+	// Build the table
+	mdTable := strings.Builder{}
+
+	tHeaders := make([]string, 0, len(fields))
+	for _, f := range fields {
+		tHeaders = append(tHeaders, colHeaders[strings.ToLower(f)])
+	}
+	tHeaderRow := contructTableRow(tHeaders, colWidths)
+
+	hLevel := strings.Repeat("#", segments)
+
+	makerPrev := ""
+	for i, r := range data {
+		maker := r[1]
+
+		if i == 0 && segments == 0 { // Table header
+			mdTable.WriteString(tHeaderRow)
+			mdTable.WriteString(tRowSep)
+		}
+
+		if segments != 0 && maker != makerPrev { // Segment header
+			mdTable.WriteString(fmt.Sprintf("\n%s %s\n\n", hLevel, maker))
+			mdTable.WriteString(tHeaderRow)
+			mdTable.WriteString(tRowSep)
+		}
+
+		tRow := contructTableRow(r[2:], colWidths)
+		mdTable.WriteString(tRow)
+
+		makerPrev = maker
+	}
+
+	// return ""
+	return mdTable.String()
+}
+
+func contructTableRow(fields []string, colWidths []int) string {
+	tableRow := strings.Builder{}
+
+	for i, f := range fields {
+		tableRow.WriteString(fmt.Sprintf("| %-*s ", colWidths[i], f))
+		if i == len(fields)-1 {
+			tableRow.WriteString(fmt.Sprintf("|\n"))
+		}
+	}
+	return tableRow.String()
+}
 
 func generateHTML(cameras map[string]camera, unsupported bool) string {
 	_ = cameras
