@@ -1,6 +1,6 @@
 ## Usage
 
-`camera-support [-libraw <path>] [-rawspeed <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-headers <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...,...>] [-unsupported] [<output path>]`
+`camera-support [-libraw <path>] [-rawspeed <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...,...>] [-unsupported] [<output path>]`
 
 All options that take a file path accept either a URL (starting with `https://`) or a relative local path.
 
@@ -39,7 +39,7 @@ Output format.
 `tsv` is tab separated values.
 `none` creates no output. Useful if only interested in statistics.
   
-### -headers
+### -segments
   
 Segments tables by maker, adding a header using the specified level (1-6).
   
