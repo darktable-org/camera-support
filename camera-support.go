@@ -130,7 +130,7 @@ func main() {
 
 	cameras := map[string]camera{}
 
-	loadRawSpeed(cameras, options.rawspeedPath)
+	loadRawSpeed(cameras, options.rawspeedPath, options.unsupported)
 
 	if options.librawPath != "" {
 		loadLibRaw(cameras, options.librawPath)
@@ -199,7 +199,7 @@ func getData(path string) []byte {
 	}
 }
 
-func loadRawSpeed(cameras map[string]camera, path string) {
+func loadRawSpeed(cameras map[string]camera, path string, unsupported bool) {
 	camerasXML := etree.NewDocument()
 	if err := camerasXML.ReadFromBytes(getData(path)); err != nil {
 		log.Fatal(err)
@@ -263,6 +263,9 @@ func loadRawSpeed(cameras map[string]camera, path string) {
 		// }
 
 		camera.RSSupported = c.SelectAttrValue("supported", "")
+		if camera.RSSupported != "" && unsupported == false {
+			continue
+		}
 		if camera.RSSupported == "" {
 			camera.Decoder = "RawSpeed"
 		}
@@ -330,6 +333,8 @@ func loadLibRaw(cameras map[string]camera, path string) {
 				}
 			}
 
+			camera.Maker = maker
+			camera.Model = model
 			camera.Decoder = "LibRaw"
 			cameras[key] = camera
 		}
