@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/beevik/etree"
@@ -75,7 +76,15 @@ func main() {
 	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/noiseprofiles.json", "'noiseprofiles.json' location.")
 	flag.StringVar(&options.stats, "stats", "stdout", "Print statistics. <stdout|table|all|none>")
 	flag.StringVar(&options.format, "format", "md", "Output format. <md|html|tsv|none>")
-	flag.IntVar(&options.segments, "segments", 0, "Segments tables by maker, adding a header using the specified level. <1-6>")
+
+	flag.Func("segments", "Segments tables by maker, adding a header using the specified level. <1-6>", func(s string) error {
+		i, err := strconv.Atoi(s)
+		if err != nil || i > 6 {
+			return errors.New("Must be integer 0-6")
+		}
+		options.segments = i
+		return nil
+	})
 
 	flag.Func("fields", "Comma delimited list of fields to print. See the 'camera' struct in 'camera-support.go' for valid fields. <...|no-maker|all|all-debug>", func(s string) error {
 		// Default is defined under unset flag handling
@@ -114,7 +123,7 @@ func main() {
 		options.fields = append(options.fields, "Maker", "Model", "Aliases", "WBPresets", "NoiseProfiles", "Decoder")
 	}
 	if options.bools == nil {
-		options.bools = append(options.bools, "yes", "no")
+		options.bools = append(options.bools, "Yes", "No")
 	}
 
 	//// Logic ////
@@ -553,7 +562,6 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 		makerPrev = maker
 	}
 
-	// return ""
 	return mdTable.String()
 }
 
