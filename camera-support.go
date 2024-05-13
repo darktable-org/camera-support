@@ -157,7 +157,13 @@ func main() {
 			log.Fatalf("Invalid format string: %v\n", options.format)
 		}
 
-		fmt.Print(outputString)
+		if options.output != "stdout" {
+			if err := os.WriteFile(options.output, []byte(outputString), 0666); err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			fmt.Print(outputString)
+		}
 	}
 
 	if options.stats == "stdout" || options.stats == "all" {

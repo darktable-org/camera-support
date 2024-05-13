@@ -27,7 +27,7 @@ Default: `https://raw.githubusercontent.com/darktable-org/darktable/master/data/
 ### -stats
 
 Print statistics.
-`stdout` prints at the end of normal output to the terminal. Default.
+The default is `stdout` which prints at the end of normal output to the terminal.
 `table` adds stats to table headers.
 `all` does both.
 `none` prints nothing.
