@@ -66,6 +66,7 @@ func main() {
 		segments          int
 		fields            []string
 		bools             []string
+		escape            bool
 		unsupported       bool
 		output            string
 	}
@@ -108,15 +109,9 @@ func main() {
 		return nil
 	})
 
+	flag.BoolVar(&options.escape, "escape", false, "Escape Markdown characters in Model and Aliases fields.")
 	flag.BoolVar(&options.unsupported, "unsupported", false, "Include unsupported cameras. Also affects statistics.")
 	flag.Parse()
-
-	// Non-flag options
-	if flag.Arg(0) != "" {
-		options.output = flag.Arg(0)
-	} else {
-		options.output = "stdout"
-	}
 
 	// Handle unset flags
 	if options.fields == nil {
@@ -124,6 +119,13 @@ func main() {
 	}
 	if options.bools == nil {
 		options.bools = append(options.bools, "Yes", "No")
+	}
+
+	// Non-flag options
+	if flag.Arg(0) != "" {
+		options.output = flag.Arg(0)
+	} else {
+		options.output = "stdout"
 	}
 
 	//// Logic ////
@@ -144,7 +146,7 @@ func main() {
 	////  Output  ////
 
 	if options.format != "none" {
-		data := prepareOutputData(cameras, options.fields, options.bools, options.unsupported)
+		data := prepareOutputData(cameras, options.fields, options.bools, options.escape, options.unsupported)
 
 		outputString := ""
 		if options.format == "md" {
@@ -444,8 +446,23 @@ func generateStats(cameras map[string]camera, unsupported bool) stats {
 	return s
 }
 
-func prepareOutputData(cameras map[string]camera, fields []string, bools []string, unsupported bool) [][]string {
+func prepareOutputData(cameras map[string]camera, fields []string, bools []string, escape bool, unsupported bool) [][]string {
 	data := make([][]string, 0, len(cameras))
+
+	mdEscapes := strings.NewReplacer(
+		"\\", "\\\\",
+		"*", "\\*",
+		"_", "\\_",
+		"{", "\\{",
+		"}", "\\}",
+		"[", "\\[",
+		"]", "\\]",
+		"<", "\\<",
+		">", "\\>",
+		"(", "\\(",
+		")", "\\)",
+		"#", "\\#",
+	)
 
 	// Maps can't be sorted, so use a separate sorted slice for the output order
 	camerasOrder := make([]string, 0, len(cameras))
@@ -472,9 +489,17 @@ func prepareOutputData(cameras map[string]camera, fields []string, bools []strin
 			case "maker":
 				row = append(row, c.Maker)
 			case "model":
-				row = append(row, c.Model)
+				if escape == true {
+					row = append(row, mdEscapes.Replace(c.Model))
+				} else {
+					row = append(row, c.Model)
+				}
 			case "aliases":
-				row = append(row, strings.Join(c.Aliases, ", "))
+				if escape == true {
+					row = append(row, mdEscapes.Replace(strings.Join(c.Aliases, ", ")))
+				} else {
+					row = append(row, strings.Join(c.Aliases, ", "))
+				}
 			case "formats":
 				row = append(row, strings.Join(c.Formats, ", "))
 			case "wbpresets":

@@ -1,6 +1,6 @@
 ## Usage
 
-`camera-support [-libraw <path>] [-rawspeed <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...,...>] [-unsupported] [<output path>]`
+`camera-support [-libraw <path>] [-rawspeed <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...,...>] [-escape] [-unsupported] [<output path>]`
 
 All options that take a file path accept either a URL (starting with `https://`) or a relative local path.
 
@@ -52,6 +52,10 @@ Presets: `no-maker|all|all-debug`
 ### -bools
 
 Text to use for boolean fields. Format is "true,false" with a comma delimiter.
+
+### -escape
+
+Escape Markdown characters in Model and Aliases fields.
 
 ### -unsupported
 
