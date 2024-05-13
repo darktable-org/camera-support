@@ -175,16 +175,16 @@ func main() {
 
 	if options.stats == "stdout" || options.stats == "all" {
 		if options.output == "stdout" && options.format != "none" {
-			fmt.Println("\r")
+			fmt.Println("")
 		}
-		fmt.Printf("Cameras:\t %v\n", stats.cameras)
-		fmt.Printf("  RawSpeed:\t %v (%v%%)\n", stats.rawspeed, stats.rawspeedPercent)
-		fmt.Printf("  LibRaw:\t %v (%v%%)\n", stats.libraw, stats.librawPercent)
-		fmt.Printf("  Unknown:\t %v (%v%%)\n", stats.unknown, stats.unknownPercent)
-		fmt.Printf("  Unsupported:\t %v (%v%%)\n", stats.unsupported, stats.unsupportedPercent)
-		fmt.Printf("Aliases:\t %v\n", stats.aliases)
-		fmt.Printf("WB Presets:\t %v (%v%%)\n", stats.wbPresets, stats.wbPresetsPercent)
-		fmt.Printf("Noise Profiles:\t %v (%v%%)\n", stats.noiseProfiles, stats.noiseProfilePercent)
+		fmt.Printf("Cameras:\t %4v\n", stats.cameras)
+		fmt.Printf("  RawSpeed:\t %4v  %3v%%\n", stats.rawspeed, stats.rawspeedPercent)
+		fmt.Printf("  LibRaw:\t %4v  %3v%%\n", stats.libraw, stats.librawPercent)
+		fmt.Printf("  Unknown:\t %4v  %3v%%\n", stats.unknown, stats.unknownPercent)
+		fmt.Printf("  Unsupported:\t %4v  %3v%%\n", stats.unsupported, stats.unsupportedPercent)
+		fmt.Printf("Aliases:\t %4v\n", stats.aliases)
+		fmt.Printf("WB Presets:\t %4v  %3v%%\n", stats.wbPresets, stats.wbPresetsPercent)
+		fmt.Printf("Noise Profiles:\t %4v  %3v%%\n", stats.noiseProfiles, stats.noiseProfilePercent)
 	}
 }
 
