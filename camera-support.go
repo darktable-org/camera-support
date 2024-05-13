@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"regexp"
@@ -32,14 +33,20 @@ type camera struct {
 }
 
 type stats struct {
-	cameras       int
-	aliases       int
-	rawspeed      int
-	libraw        int
-	unknown       int
-	unsupported   int
-	wbPresets     int
-	noiseProfiles int
+	cameras             int
+	aliases             int
+	rawspeed            int
+	rawspeedPercent     int
+	libraw              int
+	librawPercent       int
+	unknown             int
+	unknownPercent      int
+	unsupported         int
+	unsupportedPercent  int
+	wbPresets           int
+	wbPresetsPercent    int
+	noiseProfiles       int
+	noiseProfilePercent int
 }
 
 func main() {
@@ -170,14 +177,14 @@ func main() {
 		if options.output == "stdout" && options.format != "none" {
 			fmt.Println("\r")
 		}
-		fmt.Println("Cameras:\t", stats.cameras)
-		fmt.Println("  RawSpeed:\t", stats.rawspeed)
-		fmt.Println("  LibRaw:\t", stats.libraw)
-		fmt.Println("  Unknown:\t", stats.unknown)
-		fmt.Println("  Unsupported:\t", stats.unsupported)
-		fmt.Println("Aliases:\t", stats.aliases)
-		fmt.Println("WB Presets:\t", stats.wbPresets)
-		fmt.Println("Noise Profiles:\t", stats.noiseProfiles)
+		fmt.Printf("Cameras:\t %v\n", stats.cameras)
+		fmt.Printf("  RawSpeed:\t %v (%v%%)\n", stats.rawspeed, stats.rawspeedPercent)
+		fmt.Printf("  LibRaw:\t %v (%v%%)\n", stats.libraw, stats.librawPercent)
+		fmt.Printf("  Unknown:\t %v (%v%%)\n", stats.unknown, stats.unknownPercent)
+		fmt.Printf("  Unsupported:\t %v (%v%%)\n", stats.unsupported, stats.unsupportedPercent)
+		fmt.Printf("Aliases:\t %v\n", stats.aliases)
+		fmt.Printf("WB Presets:\t %v (%v%%)\n", stats.wbPresets, stats.wbPresetsPercent)
+		fmt.Printf("Noise Profiles:\t %v (%v%%)\n", stats.noiseProfiles, stats.noiseProfilePercent)
 	}
 }
 
@@ -423,6 +430,7 @@ func generateStats(cameras map[string]camera, unsupported bool) stats {
 
 	s := stats{}
 
+	// Totals
 	for _, c := range cameras {
 		if c.Decoder == "" && unsupported == false {
 			continue
@@ -448,6 +456,14 @@ func generateStats(cameras map[string]camera, unsupported bool) stats {
 
 		s.cameras += 1
 	}
+
+	// Percentages
+	s.rawspeedPercent = int(math.Round(float64(s.rawspeed) / float64(s.cameras) * 100))
+	s.librawPercent = int(math.Round(float64(s.libraw) / float64(s.cameras) * 100))
+	s.unknownPercent = int(math.Round(float64(s.unknown) / float64(s.cameras) * 100))
+	s.unsupportedPercent = int(math.Round(float64(s.unsupported) / float64(s.cameras) * 100))
+	s.wbPresetsPercent = int(math.Round(float64(s.wbPresets) / float64(s.cameras) * 100))
+	s.noiseProfilePercent = int(math.Round(float64(s.noiseProfiles) / float64(s.cameras) * 100))
 
 	return s
 }
