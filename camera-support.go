@@ -50,7 +50,7 @@ type stats struct {
 }
 
 func main() {
-	// Having a map inside a struct is obnoxious, so this is not part of options
+	// Having a map inside a struct is obnoxious, so this is not part of the options struct
 	columnHeaders := map[string]string{
 		"maker":         "Maker",
 		"model":         "Model",
@@ -157,7 +157,7 @@ func main() {
 
 		outputString := ""
 		if options.format == "md" {
-			outputString = generateMD(data, options.fields, columnHeaders, options.segments, options.stats, stats)
+			outputString = generateMD(data, options.fields, columnHeaders, options.segments, options.stats, options.bools)
 		} else if options.format == "tsv" {
 			outputString = generateTSV(data, options.fields, columnHeaders)
 		} else {
@@ -551,18 +551,93 @@ func prepareOutputData(cameras map[string]camera, fields []string, bools []strin
 	return data
 }
 
-func generateMD(data [][]string, fields []string, colHeaders map[string]string, segments int, showStats string, stats stats) string {
-	_ = stats
-	_ = showStats
+func generateMD(data [][]string, fields []string, colHeaders map[string]string, segments int, showStats string, bools []string) string {
+
+	headerFields := map[string][]string{} // Key is "fulltable" if no segments, <maker> otherwise
+	if showStats == "table" || showStats == "all" {
+		sumModels := 0
+		sumWB := 0
+		sumNP := 0
+		makerNext := ""
+		rowsTotal := len(data)
+		for i, r := range data {
+			maker := r[1]
+			if i != rowsTotal-1 {
+				makerNext = data[i+1][1]
+			}
+
+			for j, f := range r {
+				if j == 0 || j == 1 {
+					continue
+				}
+				switch strings.ToLower(fields[j-2]) {
+				case "model":
+					sumModels += 1
+				case "wbpresets":
+					if f == bools[0] {
+						sumWB += 1
+					}
+				case "noiseprofiles":
+					if f == bools[0] {
+						sumNP += 1
+					}
+				}
+			}
+
+			if i == rowsTotal-1 || (segments != 0 && maker != makerNext) {
+				percentWB := strconv.Itoa(int(math.Round(float64(sumWB) / float64(sumModels) * 100)))
+				percentNP := strconv.Itoa(int(math.Round(float64(sumNP) / float64(sumModels) * 100)))
+
+				hf := make([]string, 0, len(fields))
+				for _, f := range fields {
+					f = strings.ToLower(f)
+					switch f {
+					case "model":
+						hf = append(hf, colHeaders[f]+" ("+strconv.Itoa(sumModels)+")")
+					case "wbpresets":
+						hf = append(hf, colHeaders[f]+" ("+strconv.Itoa(sumWB)+" - "+percentWB+"%)")
+					case "noiseprofiles":
+						hf = append(hf, colHeaders[f]+" ("+strconv.Itoa(sumNP)+" - "+percentNP+"%)")
+					default:
+						hf = append(hf, colHeaders[f])
+					}
+					if segments == 0 {
+						headerFields["fulltable"] = hf
+					} else {
+						headerFields[maker] = hf
+					}
+				}
+
+				sumModels = 0
+				sumWB = 0
+				sumNP = 0
+			}
+		}
+	} else { // No stats
+		hf := make([]string, 0, len(fields))
+		for _, f := range fields {
+			f = strings.ToLower(f)
+			hf = append(hf, colHeaders[f])
+		}
+		headerFields["nostats"] = hf
+	}
 
 	// Calculate the widest field in each column, so table cells line up nicely
-	colWidths := make([]int, 0, len(fields))
-	for _, f := range fields {
-		w := len(colHeaders[strings.ToLower(f)])
-		colWidths = append(colWidths, w)
+	colWidths := make([]int, len(fields), len(fields))
+
+	// Headers
+	for _, h := range headerFields {
+		for i, f := range h {
+			w := len(f)
+			if w > colWidths[i] {
+				colWidths[i] = w
+			}
+		}
 	}
+
+	// Rest of data
 	for _, r := range data {
-		for i, f := range r[2:] {
+		for i, f := range r[2:] { // We skip the first two fields, since they are not in the output
 			w := len(f)
 			if w > colWidths[i] {
 				colWidths[i] = w
@@ -580,12 +655,6 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 	// Build the table
 	mdTable := strings.Builder{}
 
-	tHeaders := make([]string, 0, len(fields))
-	for _, f := range fields {
-		tHeaders = append(tHeaders, colHeaders[strings.ToLower(f)])
-	}
-	tHeaderRow := contructTableRow(tHeaders, colWidths)
-
 	hLevel := strings.Repeat("#", segments)
 
 	makerPrev := ""
@@ -593,13 +662,21 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 		maker := r[1]
 
 		if i == 0 && segments == 0 { // Table header
-			mdTable.WriteString(tHeaderRow)
+			if showStats == "table" || showStats == "all" {
+				mdTable.WriteString(contructTableRow(headerFields["fulltable"], colWidths))
+			} else {
+				mdTable.WriteString(contructTableRow(headerFields["nostats"], colWidths))
+			}
 			mdTable.WriteString(tRowSep)
 		}
 
 		if segments != 0 && maker != makerPrev { // Segment header
 			mdTable.WriteString(fmt.Sprintf("\n%s %s\n\n", hLevel, maker))
-			mdTable.WriteString(tHeaderRow)
+			if showStats == "table" || showStats == "all" {
+				mdTable.WriteString(contructTableRow(headerFields[maker], colWidths))
+			} else {
+				mdTable.WriteString(contructTableRow(headerFields["nostats"], colWidths))
+			}
 			mdTable.WriteString(tRowSep)
 		}
 
