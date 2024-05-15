@@ -103,6 +103,7 @@ func main() {
 		} else if s == "no-maker" {
 			s = "Model,Aliases,WBPresets,NoiseProfiles,Decoder"
 		}
+		s = strings.ToLower(s)
 		options.fields = strings.Split(s, ",")
 		return nil
 	})
@@ -122,7 +123,7 @@ func main() {
 
 	// Handle unset flags
 	if options.fields == nil {
-		options.fields = append(options.fields, "Maker", "Model", "Aliases", "WBPresets", "NoiseProfiles", "Decoder")
+		options.fields = append(options.fields, "maker", "model", "aliases", "wbpresets", "noiseprofiles", "decoder")
 	}
 	if options.bools == nil {
 		options.bools = append(options.bools, "Yes", "No")
@@ -507,7 +508,7 @@ func prepareOutputData(cameras map[string]camera, fields []string, bools []strin
 		row = append(row, c.Maker)
 
 		for _, f := range fields {
-			switch strings.ToLower(f) {
+			switch f {
 			case "maker":
 				row = append(row, c.Maker)
 			case "model":
@@ -570,7 +571,7 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 				if j == 0 || j == 1 {
 					continue
 				}
-				switch strings.ToLower(fields[j-2]) {
+				switch fields[j-2] {
 				case "model":
 					sumModels += 1
 				case "wbpresets":
@@ -590,7 +591,6 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 
 				hf := make([]string, 0, len(fields))
 				for _, f := range fields {
-					f = strings.ToLower(f)
 					switch f {
 					case "model":
 						hf = append(hf, colHeaders[f]+" ("+strconv.Itoa(sumModels)+")")
@@ -616,7 +616,6 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 	} else { // No stats
 		hf := make([]string, 0, len(fields))
 		for _, f := range fields {
-			f = strings.ToLower(f)
 			hf = append(hf, colHeaders[f])
 		}
 		headerFields["nostats"] = hf
@@ -704,7 +703,7 @@ func contructTableRow(fields []string, colWidths []int) string {
 func generateTSV(data [][]string, fields []string, colHeaders map[string]string) string {
 	headers := make([]string, 0, len(fields))
 	for _, f := range fields {
-		headers = append(headers, colHeaders[strings.ToLower(f)])
+		headers = append(headers, colHeaders[f])
 	}
 
 	tsvData := strings.Builder{}
