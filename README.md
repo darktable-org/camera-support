@@ -5,10 +5,10 @@
 All options that take a file path accept either a URL (starting with `https://`) or a relative local path.
 
 ### -libraw
-  
+
 `imageio_libraw.c` location. If empty, LibRaw cameras will not be included.
 Default: `https://raw.githubusercontent.com/darktable-org/darktable/master/src/imageio/imageio_libraw.c`
-  
+
 ### -rawspeed
 
 `cameras.xml` location.
@@ -23,7 +23,7 @@ Default: `https://raw.githubusercontent.com/darktable-org/darktable/master/data/
 
 `noiseprofiles.json` location.
 Default: `https://raw.githubusercontent.com/darktable-org/darktable/master/data/noiseprofiles.json`
-  
+
 ### -stats
 
 Print statistics.
@@ -38,11 +38,16 @@ Output format.
 `md`, the default, is Markdown table.
 `tsv` is tab separated values.
 `none` creates no output. Useful if only interested in statistics.
-  
+
+### -thformatstr
+
+Format string to use for header fields with statistics. Format is `no-percent;with-percent` with a semicolon delimiter. Default is `%v (%v);%v (%v / %v%%)`.
+See Go's fmt docs for details: https://pkg.go.dev/fmt
+
 ### -segments
-  
+
 Segments tables by maker, adding a header using the specified level (1-6).
-  
+
 ### -fields
 
 Comma delimited list of fields to print. Default is `Maker,Model,Aliases,WBPresets,NoiseProfiles,Decoder`.
@@ -51,7 +56,7 @@ Presets: `no-maker|all|all-debug`
 
 ### -bools
 
-Text to use for boolean fields. Format is "true,false" with a comma delimiter.
+Text to use for boolean fields. Format is `true,false` with a comma delimiter.
 
 ### -escape
 

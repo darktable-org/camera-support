@@ -70,6 +70,7 @@ func main() {
 		noiseprofilesPath string
 		stats             string
 		format            string
+		thFormatStr       []string
 		segments          int
 		fields            []string
 		bools             []string
@@ -84,6 +85,15 @@ func main() {
 	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/noiseprofiles.json", "'noiseprofiles.json' location.")
 	flag.StringVar(&options.stats, "stats", "stdout", "Print statistics. <stdout|table|all|none>")
 	flag.StringVar(&options.format, "format", "md", "Output format. <md|tsv|none>")
+
+	flag.Func("thformatstr", "Format string to use for header fields with statistics. Format is \"no-percent;with-percent\" with a semicolon delimiter. See Go's fmt docs for details.", func(s string) error {
+		// Default is defined under unset flag handling
+		if strings.Count(s, ";") != 1 {
+			return errors.New("Must contain one semicolon")
+		}
+		options.thFormatStr = strings.Split(s, ";")
+		return nil
+	})
 
 	flag.Func("segments", "Segments tables by maker, adding a header using the specified level. <1-6>", func(s string) error {
 		i, err := strconv.Atoi(s)
@@ -122,6 +132,9 @@ func main() {
 	flag.Parse()
 
 	// Handle unset flags
+	if options.thFormatStr == nil {
+		options.thFormatStr = append(options.thFormatStr, "%v (%v)", "%v (%v / %v%%)")
+	}
 	if options.fields == nil {
 		options.fields = append(options.fields, "maker", "model", "aliases", "wbpresets", "noiseprofiles", "decoder")
 	}
@@ -158,7 +171,7 @@ func main() {
 
 		outputString := ""
 		if options.format == "md" {
-			outputString = generateMD(data, options.fields, columnHeaders, options.segments, options.stats, options.bools)
+			outputString = generateMD(data, options.fields, columnHeaders, options.segments, options.stats, options.bools, options.thFormatStr)
 		} else if options.format == "tsv" {
 			outputString = generateTSV(data, options.fields, columnHeaders)
 		} else {
@@ -552,9 +565,9 @@ func prepareOutputData(cameras map[string]camera, fields []string, bools []strin
 	return data
 }
 
-func generateMD(data [][]string, fields []string, colHeaders map[string]string, segments int, showStats string, bools []string) string {
+func generateMD(data [][]string, fields []string, colHeaders map[string]string, segments int, showStats string, bools []string, thFormatStr []string) string {
 
-	headerFields := map[string][]string{} // Key is "fulltable" if no segments, <maker> otherwise
+	headerFields := map[string][]string{}
 	if showStats == "table" || showStats == "all" {
 		sumModels := 0
 		sumWB := 0
@@ -586,18 +599,18 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 			}
 
 			if i == rowsTotal-1 || (segments != 0 && maker != makerNext) {
-				percentWB := strconv.Itoa(int(math.Round(float64(sumWB) / float64(sumModels) * 100)))
-				percentNP := strconv.Itoa(int(math.Round(float64(sumNP) / float64(sumModels) * 100)))
+				percentWB := int(math.Round(float64(sumWB) / float64(sumModels) * 100))
+				percentNP := int(math.Round(float64(sumNP) / float64(sumModels) * 100))
 
 				hf := make([]string, 0, len(fields))
 				for _, f := range fields {
 					switch f {
 					case "model":
-						hf = append(hf, colHeaders[f]+" ("+strconv.Itoa(sumModels)+")")
+						hf = append(hf, fmt.Sprintf(thFormatStr[0], colHeaders[f], sumModels))
 					case "wbpresets":
-						hf = append(hf, colHeaders[f]+" ("+strconv.Itoa(sumWB)+" - "+percentWB+"%)")
+						hf = append(hf, fmt.Sprintf(thFormatStr[1], colHeaders[f], sumWB, percentWB))
 					case "noiseprofiles":
-						hf = append(hf, colHeaders[f]+" ("+strconv.Itoa(sumNP)+" - "+percentNP+"%)")
+						hf = append(hf, fmt.Sprintf(thFormatStr[1], colHeaders[f], sumNP, percentNP))
 					default:
 						hf = append(hf, colHeaders[f])
 					}
