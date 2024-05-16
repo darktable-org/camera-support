@@ -6,7 +6,7 @@ By default the list will be pulled from the current development version, so may 
 
 ## Usage
 
-`camera-support [-libraw <path>] [-rawspeed <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-thformatstr <...;...>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...,...>] [-escape] [-unsupported] [<output path>]`
+`camera-support [-libraw <path>] [-rawspeed <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-thformatstr <...;...>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...;...>] [-escape] [-unsupported] [<output path>]`
 
 All options that take a file path accept either a URL (starting with `https://`) or a relative local path.
 
@@ -57,13 +57,13 @@ Segments tables by maker, adding a header using the specified level (1-6).
 
 ### -fields
 
-Comma delimited list of fields to print. Default is `Maker,Model,Aliases,WBPresets,NoiseProfiles,Decoder`.
+Semicolon delimited list of fields to print. Default is `Maker;Model;Aliases;WBPresets;NoiseProfiles;Decoder`.
 See the `camera` struct in `camera-support.go` for valid fields. Not case-sensitive.
 Presets: `no-maker|all|all-debug`
 
 ### -bools
 
-Text to use for boolean fields. Format is `true,false` with a comma delimiter. Accepts Markdown formatting allowed in tables.
+Text to use for boolean fields. Format is `true;false` with a semicolon delimiter. Accepts Markdown formatting allowed in tables.
 
 ### -escape
 

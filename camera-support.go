@@ -98,32 +98,32 @@ func main() {
 	flag.Func("segments", "Segments tables by maker, adding a header using the specified level. <1-6>", func(s string) error {
 		i, err := strconv.Atoi(s)
 		if err != nil || i > 6 {
-			return errors.New("Must be integer 0-6")
+			return errors.New("Must be an integer 0-6")
 		}
 		options.segments = i
 		return nil
 	})
 
-	flag.Func("fields", "Comma delimited list of fields to print. See the 'camera' struct in 'camera-support.go' for valid fields. <...|no-maker|all|all-debug>", func(s string) error {
+	flag.Func("fields", "Semicolon delimited list of fields to print. See the 'camera' struct in 'camera-support.go' for valid fields. <...|no-maker|all|all-debug>", func(s string) error {
 		// Default is defined under unset flag handling
 		if s == "all" {
-			s = "Maker,Model,Aliases,WBPresets,NoiseProfiles,Decoder,RSSupported,Formats"
+			s = "Maker;Model;Aliases;WBPresets;NoiseProfiles;Decoder;RSSupported;Formats"
 		} else if s == "all-debug" {
-			s = "Maker,Model,Aliases,WBPresets,NoiseProfiles,Decoder,RSSupported,Formats,Debug"
+			s = "Maker;Model;Aliases;WBPresets;NoiseProfiles;Decoder;RSSupported;Formats;Debug"
 		} else if s == "no-maker" {
-			s = "Model,Aliases,WBPresets,NoiseProfiles,Decoder"
+			s = "Model;Aliases;WBPresets;NoiseProfiles;Decoder"
 		}
 		s = strings.ToLower(s)
-		options.fields = strings.Split(s, ",")
+		options.fields = strings.Split(s, ";")
 		return nil
 	})
 
-	flag.Func("bools", "Text to use for boolean fields. Format is \"true,false\" with a comma delimiter.", func(s string) error {
+	flag.Func("bools", "Text to use for boolean fields. Format is \"true;false\" with a semicolon delimiter.", func(s string) error {
 		// Default is defined under unset flag handling
-		if strings.Count(s, ",") != 1 {
-			return errors.New("Must contain one comma")
+		if strings.Count(s, ";") != 1 {
+			return errors.New("Must contain one semicolon")
 		}
-		options.bools = strings.Split(s, ",")
+		options.bools = strings.Split(s, ";")
 		return nil
 	})
 
@@ -195,7 +195,9 @@ func main() {
 		fmt.Printf("  RawSpeed:\t %4v  %3v%%\n", stats.rawspeed, stats.rawspeedPercent)
 		fmt.Printf("  LibRaw:\t %4v  %3v%%\n", stats.libraw, stats.librawPercent)
 		fmt.Printf("  Unknown:\t %4v  %3v%%\n", stats.unknown, stats.unknownPercent)
-		fmt.Printf("  Unsupported:\t %4v  %3v%%\n", stats.unsupported, stats.unsupportedPercent)
+		if options.unsupported == true {
+			fmt.Printf("  Unsupported:\t %4v  %3v%%\n", stats.unsupported, stats.unsupportedPercent)
+		}
 		fmt.Printf("Aliases:\t %4v\n", stats.aliases)
 		fmt.Printf("WB Presets:\t %4v  %3v%%\n", stats.wbPresets, stats.wbPresetsPercent)
 		fmt.Printf("Noise Profiles:\t %4v  %3v%%\n", stats.noiseProfiles, stats.noiseProfilePercent)
