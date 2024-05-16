@@ -1,3 +1,9 @@
+# Darktable Camera Support
+
+Generate list of cameras supported by darktable.
+
+By default the list will be pulled from the current development version, so may not reflect what the stable version supports.
+
 ## Usage
 
 `camera-support [-libraw <path>] [-rawspeed <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-thformatstr <...;...>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...,...>] [-escape] [-unsupported] [<output path>]`
@@ -41,8 +47,9 @@ Output format.
 
 ### -thformatstr
 
-Format string to use for header fields with statistics. Format is `no-percent;with-percent` with a semicolon delimiter. Default is `%v (%v);%v (%v / %v%%)`.
-See Go's fmt docs for details: https://pkg.go.dev/fmt
+Format string to use for table headers with statistics. Format is `no-percent;with-percent` with a semicolon delimiter. Default is `%v (%v);%v (%v / %v%%)`.
+See Go's fmt docs for details: https://pkg.go.dev/fmt  
+Also accepts Markdown formatting allowed in tables.
 
 ### -segments
 
@@ -51,12 +58,12 @@ Segments tables by maker, adding a header using the specified level (1-6).
 ### -fields
 
 Comma delimited list of fields to print. Default is `Maker,Model,Aliases,WBPresets,NoiseProfiles,Decoder`.
-See the `camera` struct in `camera-support.go` for valid fields.
+See the `camera` struct in `camera-support.go` for valid fields. Not case-sensitive.
 Presets: `no-maker|all|all-debug`
 
 ### -bools
 
-Text to use for boolean fields. Format is `true,false` with a comma delimiter.
+Text to use for boolean fields. Format is `true,false` with a comma delimiter. Accepts Markdown formatting allowed in tables.
 
 ### -escape
 
