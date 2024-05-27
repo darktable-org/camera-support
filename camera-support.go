@@ -245,7 +245,7 @@ func loadRawSpeed(cameras map[string]camera, path string, unsupported bool) {
 			maker = id.SelectAttrValue("make", "")
 			model = id.SelectAttrValue("model", "")
 			key = strings.ToLower(maker + " " + model)
-		} else { // No ID element so get from Camera
+		} else { // No <ID> element so get from <Camera>
 			maker = c.SelectAttrValue("make", "")
 			model = c.SelectAttrValue("model", "")
 			key = strings.ToLower(maker + " " + model)
@@ -266,7 +266,6 @@ func loadRawSpeed(cameras map[string]camera, path string, unsupported bool) {
 				val := a.Text()
 				if id == "" {
 					// Sometimes <Alias> doesn't have an id attribute, so use the text instead
-					// Not ideal, but probably the best that can be done for now
 					// Would be better if cameras.xml was consistent
 					alias, _ = strings.CutPrefix(val, maker+" ")
 					debug = append(debug, "cameras.xml: No id in Alias")
@@ -396,7 +395,7 @@ func loadWBPresets(cameras map[string]camera, path string) {
 		for _, m := range v.Models {
 			key := strings.ToLower(v.Maker + " " + m.Model)
 			camera := cameras[key]
-			if camera.Maker == "" {
+			if camera.Maker == "" { // Camera isn't present in cameras.xml or imageio_libraw.c
 				camera.Decoder = "Unknown"
 				camera.Debug = append(camera.Debug, "Source: wb_presets.json")
 			}
@@ -430,7 +429,7 @@ func loadNoiseProfiles(cameras map[string]camera, path string) {
 		for _, m := range v.Models {
 			key := strings.ToLower(v.Maker + " " + m.Model)
 			camera := cameras[key]
-			if camera.Maker == "" {
+			if camera.Maker == "" { // Camera isn't present in cameras.xml or imageio_libraw.c
 				camera.Decoder = "Unknown"
 				camera.Debug = append(camera.Debug, "Source: noiseprofiles.json")
 			}
@@ -576,6 +575,7 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 		sumNP := 0
 		makerNext := ""
 		rowsTotal := len(data)
+
 		for i, r := range data {
 			maker := r[1]
 			if i != rowsTotal-1 {
@@ -638,8 +638,6 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 
 	// Calculate the widest field in each column, so table cells line up nicely
 	colWidths := make([]int, len(fields), len(fields))
-
-	// Headers
 	for _, h := range headerFields {
 		for i, f := range h {
 			w := len(f)
@@ -648,8 +646,6 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 			}
 		}
 	}
-
-	// Rest of data
 	for _, r := range data {
 		for i, f := range r[2:] { // We skip the first two fields, since they are not in the output
 			w := len(f)
@@ -694,8 +690,7 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 			mdTable.WriteString(tRowSep)
 		}
 
-		tRow := contructTableRow(r[2:], colWidths)
-		mdTable.WriteString(tRow)
+		mdTable.WriteString(contructTableRow(r[2:], colWidths))
 
 		makerPrev = maker
 	}
