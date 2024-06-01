@@ -416,6 +416,8 @@ func loadWBPresets(cameras map[string]camera, path string) {
 			if camera.Maker == "" { // Camera isn't present in cameras.xml or imageio_libraw.c
 				camera.Decoder = "Unknown"
 				camera.Debug = append(camera.Debug, "Source: wb_presets.json")
+			} else if camera.Decoder == "" {
+				camera.Debug = append(camera.Debug, "Source: wb_presets.json", "wb_presets.json: No decoder")
 			}
 			camera.Maker = v.Maker
 			camera.Model = m.Model
@@ -450,6 +452,8 @@ func loadNoiseProfiles(cameras map[string]camera, path string) {
 			if camera.Maker == "" { // Camera isn't present in cameras.xml or imageio_libraw.c
 				camera.Decoder = "Unknown"
 				camera.Debug = append(camera.Debug, "Source: noiseprofiles.json")
+			} else if camera.Decoder == "" {
+				camera.Debug = append(camera.Debug, "Source: noiseprofiles.json", "noiseprofiles.json: No decoder")
 			}
 			camera.Maker = v.Maker
 			camera.Model = m.Model
