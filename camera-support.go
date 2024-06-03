@@ -267,11 +267,11 @@ func loadRawSpeed(cameras map[string]camera, path string, unsupported bool) {
 		if id := c.SelectElement("ID"); id != nil {
 			maker = id.SelectAttrValue("make", "")
 			model = id.SelectAttrValue("model", "")
-			key = strings.ToLower(maker + " " + model)
+			key = makeKey(maker, model)
 		} else { // No <ID> element so get from <Camera>
 			maker = c.SelectAttrValue("make", "")
 			model = c.SelectAttrValue("model", "")
-			key = strings.ToLower(maker + " " + model)
+			key = makeKey(maker, model)
 
 			if model == "" {
 				debug = append(debug, "cameras.xml: No Model in Camera element")
@@ -306,9 +306,9 @@ func loadRawSpeed(cameras map[string]camera, path string, unsupported bool) {
 
 		if format := c.SelectAttrValue("mode", ""); format != "" {
 			camera.Formats = append(camera.Formats, format)
-		} //  else {
-		// 	camera.Formats = append(camera.Formats, "default")
-		// }
+		} else {
+			camera.Formats = append(camera.Formats, "default")
+		}
 
 		camera.RSSupported = c.SelectAttrValue("supported", "")
 		if camera.RSSupported != "" && unsupported == false {
@@ -366,7 +366,7 @@ func loadLibRaw(cameras map[string]camera, path string) {
 		}
 
 		if strings.Contains(line, "},") {
-			key := strings.ToLower(maker + " " + model)
+			key := makeKey(maker, model)
 			camera := cameras[key]
 
 			if model != alias {
@@ -416,7 +416,7 @@ func loadWBPresets(cameras map[string]camera, path string) {
 
 	for _, v := range presets.WBPresets {
 		for _, m := range v.Models {
-			key := strings.ToLower(v.Maker + " " + m.Model)
+			key := makeKey(v.Maker, m.Model)
 			camera := cameras[key]
 			if camera.Maker == "" { // Camera isn't present in cameras.xml or imageio_libraw.c
 				camera.Decoder = "Unknown"
@@ -452,7 +452,7 @@ func loadNoiseProfiles(cameras map[string]camera, path string) {
 
 	for _, v := range profiles.Noiseprofiles {
 		for _, m := range v.Models {
-			key := strings.ToLower(v.Maker + " " + m.Model)
+			key := makeKey(v.Maker, m.Model)
 			camera := cameras[key]
 			if camera.Maker == "" { // Camera isn't present in cameras.xml or imageio_libraw.c
 				camera.Decoder = "Unknown"
@@ -486,9 +486,9 @@ func loadRawSpeedDNG(cameras map[string]camera, rsDNGPath string) {
 
 		maker := c[0]
 		model := c[1]
-		key := strings.ToLower(maker + " " + model)
+		key := makeKey(maker, model)
 
-		if key == "maker model" { // Skip header line
+		if maker == "Maker" && model == "Model" { // Skip header line
 			continue
 		}
 
@@ -785,4 +785,9 @@ func generateTSV(data [][]string, fields []string, colHeaders map[string]string)
 	}
 
 	return tsvData.String()
+}
+
+func makeKey(maker string, model string) string {
+	// The 'zzz' fixes some sorting issues
+	return maker + " zzz " + model
 }
