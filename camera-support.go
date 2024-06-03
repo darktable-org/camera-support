@@ -476,7 +476,7 @@ func loadRawSpeedDNG(cameras map[string]camera, rsDNGPath string) {
 	defer rsDNG.Close()
 
 	reader := csv.NewReader(rsDNG)
-	reader.Comma = ';'
+	// reader.Comma = ';'
 	rows, err := reader.ReadAll()
 	if err != nil {
 		log.Fatal("Cannot read rawspeed-dng.csv: ", err)
