@@ -20,6 +20,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -83,6 +84,7 @@ func main() {
 
 	var options struct {
 		rawspeedPath      string
+		rawspeedDNGPath   string
 		librawPath        string
 		wbpresetsPath     string
 		noiseprofilesPath string
@@ -98,6 +100,7 @@ func main() {
 	}
 
 	flag.StringVar(&options.rawspeedPath, "rawspeed", "https://raw.githubusercontent.com/darktable-org/rawspeed/develop/data/cameras.xml", "'cameras.xml' location.")
+	flag.StringVar(&options.rawspeedDNGPath, "rawspeeddng", "./rawspeed-dng.csv", "'rawspeed-dng.csv' location.")
 	flag.StringVar(&options.librawPath, "libraw", "https://raw.githubusercontent.com/darktable-org/darktable/master/src/imageio/imageio_libraw.c", "'imageio_libraw.c' location. If empty, LibRaw cameras will not be included.")
 	flag.StringVar(&options.wbpresetsPath, "wbpresets", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/wb_presets.json", "'wb_presets.json' location.")
 	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/noiseprofiles.json", "'noiseprofiles.json' location.")
@@ -179,6 +182,8 @@ func main() {
 
 	loadWBPresets(cameras, options.wbpresetsPath)
 	loadNoiseProfiles(cameras, options.noiseprofilesPath)
+
+	loadRawSpeedDNG(cameras, options.rawspeedDNGPath)
 
 	stats := generateStats(cameras, options.unsupported)
 
@@ -417,7 +422,7 @@ func loadWBPresets(cameras map[string]camera, path string) {
 				camera.Decoder = "Unknown"
 				camera.Debug = append(camera.Debug, "Source: wb_presets.json")
 			} else if camera.Decoder == "" {
-				camera.Debug = append(camera.Debug, "Source: wb_presets.json", "wb_presets.json: No decoder")
+				camera.Debug = append(camera.Debug, "wb_presets.json: No decoder")
 			}
 			camera.Maker = v.Maker
 			camera.Model = m.Model
@@ -453,12 +458,47 @@ func loadNoiseProfiles(cameras map[string]camera, path string) {
 				camera.Decoder = "Unknown"
 				camera.Debug = append(camera.Debug, "Source: noiseprofiles.json")
 			} else if camera.Decoder == "" {
-				camera.Debug = append(camera.Debug, "Source: noiseprofiles.json", "noiseprofiles.json: No decoder")
+				camera.Debug = append(camera.Debug, "noiseprofiles.json: No decoder")
 			}
 			camera.Maker = v.Maker
 			camera.Model = m.Model
 			camera.NoiseProfiles = true
 			cameras[key] = camera
+		}
+	}
+}
+
+func loadRawSpeedDNG(cameras map[string]camera, rsDNGPath string) {
+	rsDNG, err := os.Open(rsDNGPath)
+	if err != nil {
+		log.Fatal("Cannot open rawspeed-dng.csv: ", err)
+	}
+	defer rsDNG.Close()
+
+	reader := csv.NewReader(rsDNG)
+	reader.Comma = ';'
+	rows, err := reader.ReadAll()
+	if err != nil {
+		log.Fatal("Cannot read rawspeed-dng.csv: ", err)
+	}
+
+	for _, c := range rows {
+
+		maker := c[0]
+		model := c[1]
+		key := strings.ToLower(maker + " " + model)
+
+		if key == "maker model" { // Skip header line
+			continue
+		}
+
+		camera, ok := cameras[key]
+		if ok {
+			camera.Decoder = "RawSpeed"
+			camera.Debug = append(camera.Debug, "rawspeed-dng: Decoder set")
+			cameras[key] = camera
+		} else {
+			log.Fatalln("rawspeed-dng.csv:", maker, model, "not found in cameras")
 		}
 	}
 }
