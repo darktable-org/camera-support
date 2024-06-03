@@ -6,7 +6,7 @@ By default the list will be pulled from the current development version, so may 
 
 ## Usage
 
-`camera-support [-libraw <path>] [-rawspeed <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-thformatstr <...;...>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...;...>] [-escape] [-unsupported] [<output path>]`
+`camera-support [-libraw <path>] [-rawspeed <path>] [-rawspeeddng <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-thformatstr <...;...>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...;...>] [-escape] [-unsupported] [<output path>]`
 
 All options that take a file path accept either a URL (starting with `https://`) or a relative local path.
 
@@ -19,6 +19,12 @@ Default: `https://raw.githubusercontent.com/darktable-org/darktable/master/src/i
 
 `cameras.xml` location.
 Default: `https://raw.githubusercontent.com/darktable-org/rawspeed/develop/data/cameras.xml`
+
+### -rawspeeddng
+
+`rawspeed-dng.csv` location.
+Default: `./rawspeed-dng.csv`
+This is a list of supported DNG cameras, that have WB presets or noise profiles, but are not in `cameras.xml`. Semicolon separated CSV file, with one Maker and one Model column.
 
 ### -wbpresets
 
