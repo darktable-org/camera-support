@@ -95,6 +95,7 @@ func main() {
 		fields            []string
 		bools             []string
 		escape            bool
+		unknown           bool
 		unsupported       bool
 		output            string
 	}
@@ -149,6 +150,7 @@ func main() {
 	})
 
 	flag.BoolVar(&options.escape, "escape", false, "Escape Markdown characters in Model and Aliases fields.")
+	flag.BoolVar(&options.unknown, "unknown", false, "Include cameras with unknown support status. Also affects statistics.")
 	flag.BoolVar(&options.unsupported, "unsupported", false, "Include unsupported cameras. Also affects statistics.")
 	flag.Parse()
 
@@ -174,7 +176,7 @@ func main() {
 
 	cameras := map[string]camera{}
 
-	loadRawSpeed(cameras, options.rawspeedPath, options.unsupported)
+	loadRawSpeed(cameras, options.rawspeedPath)
 
 	if options.librawPath != "" {
 		loadLibRaw(cameras, options.librawPath)
@@ -185,7 +187,7 @@ func main() {
 
 	loadRawSpeedDNG(cameras, options.rawspeedDNGPath)
 
-	stats := generateStats(cameras, options.unsupported)
+	stats := generateStats(cameras, options.unknown, options.unsupported)
 
 	////  Output  ////
 
@@ -217,7 +219,9 @@ func main() {
 		fmt.Printf("Cameras:\t %4v\n", stats.cameras)
 		fmt.Printf("  RawSpeed:\t %4v  %3v%%\n", stats.rawspeed, stats.rawspeedPercent)
 		fmt.Printf("  LibRaw:\t %4v  %3v%%\n", stats.libraw, stats.librawPercent)
-		fmt.Printf("  Unknown:\t %4v  %3v%%\n", stats.unknown, stats.unknownPercent)
+		if options.unknown == true {
+			fmt.Printf("  Unknown:\t %4v  %3v%%\n", stats.unknown, stats.unknownPercent)
+		}
 		if options.unsupported == true {
 			fmt.Printf("  Unsupported:\t %4v  %3v%%\n", stats.unsupported, stats.unsupportedPercent)
 		}
@@ -251,7 +255,7 @@ func getData(path string) []byte {
 	}
 }
 
-func loadRawSpeed(cameras map[string]camera, path string, unsupported bool) {
+func loadRawSpeed(cameras map[string]camera, path string) {
 	camerasXML := etree.NewDocument()
 	if err := camerasXML.ReadFromBytes(getData(path)); err != nil {
 		log.Fatal(err)
@@ -311,9 +315,6 @@ func loadRawSpeed(cameras map[string]camera, path string, unsupported bool) {
 		}
 
 		camera.RSSupported = c.SelectAttrValue("supported", "")
-		if camera.RSSupported != "" && unsupported == false {
-			continue
-		}
 		if camera.RSSupported == "" {
 			camera.Decoder = "RawSpeed"
 		}
@@ -488,7 +489,7 @@ func loadRawSpeedDNG(cameras map[string]camera, rsDNGPath string) {
 		model := c[1]
 		key := makeKey(maker, model)
 
-		if maker == "Maker" && model == "Model" { // Skip header line
+		if maker == "Maker" && model == "Model" { // Skip header row
 			continue
 		}
 
@@ -503,7 +504,7 @@ func loadRawSpeedDNG(cameras map[string]camera, rsDNGPath string) {
 	}
 }
 
-func generateStats(cameras map[string]camera, unsupported bool) stats {
+func generateStats(cameras map[string]camera, unknown bool, unsupported bool) stats {
 
 	s := stats{}
 
@@ -513,12 +514,14 @@ func generateStats(cameras map[string]camera, unsupported bool) stats {
 			continue
 		} else if c.Decoder == "" && unsupported == true {
 			s.unsupported += 1
+		} else if c.Decoder == "Unknown" && unknown == false {
+			continue
+		} else if c.Decoder == "Unknown" && unknown == true {
+			s.unknown += 1
 		} else if c.Decoder == "RawSpeed" {
 			s.rawspeed += 1
 		} else if c.Decoder == "LibRaw" {
 			s.libraw += 1
-		} else if c.Decoder == "Unknown" {
-			s.unknown += 1
 		}
 
 		s.aliases += len(c.Aliases)

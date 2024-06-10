@@ -6,7 +6,7 @@ By default the list will be pulled from the current development version, so may 
 
 ## Usage
 
-`camera-support [-libraw <path>] [-rawspeed <path>] [-rawspeeddng <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-thformatstr <...;...>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...;...>] [-escape] [-unsupported] [<output path>]`
+`camera-support [-libraw <path>] [-rawspeed <path>] [-rawspeeddng <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-thformatstr <...;...>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...;...>] [-escape] [-unknown] [-unsupported] [<output path>]`
 
 All options that take a file path accept either a URL (starting with `https://`) or a relative local path.
 
@@ -74,6 +74,10 @@ Text to use for boolean fields. Format is `true;false` with a semicolon delimite
 ### -escape
 
 Escape Markdown characters in Model and Aliases fields.
+
+### -unknown
+
+Include cameras with unknown support status. They are cameras that are in `wb_presets.json` or `noiseprofiles.json`, but not in `cameras.xml` or `imageio_libraw.c`. Also affects statistics.
 
 ### -unsupported
 
