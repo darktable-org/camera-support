@@ -299,11 +299,11 @@ func loadRawSpeed(cameras map[string]camera, options options) {
 		if id := c.SelectElement("ID"); id != nil {
 			maker = id.SelectAttrValue("make", "")
 			model = id.SelectAttrValue("model", "")
-			key = makeKey(maker, model)
+			key = cameraKey(maker, model)
 		} else { // No <ID> element so get from <Camera>
 			maker = c.SelectAttrValue("make", "")
 			model = c.SelectAttrValue("model", "")
-			key = makeKey(maker, model)
+			key = cameraKey(maker, model)
 
 			if model == "" {
 				debug = append(debug, "cameras.xml: No Model in Camera element")
@@ -395,7 +395,7 @@ func loadLibRaw(cameras map[string]camera, options options) {
 		}
 
 		if strings.Contains(line, "},") {
-			key := makeKey(maker, model)
+			key := cameraKey(maker, model)
 			camera := cameras[key]
 
 			if model != alias {
@@ -445,7 +445,7 @@ func loadWBPresets(cameras map[string]camera, options options) {
 
 	for _, v := range presets.WBPresets {
 		for _, m := range v.Models {
-			key := makeKey(v.Maker, m.Model)
+			key := cameraKey(v.Maker, m.Model)
 			camera := cameras[key]
 			if camera.Maker == "" { // Camera isn't present in cameras.xml or imageio_libraw.c
 				camera.Decoder = "Unknown"
@@ -481,7 +481,7 @@ func loadNoiseProfiles(cameras map[string]camera, options options) {
 
 	for _, v := range profiles.Noiseprofiles {
 		for _, m := range v.Models {
-			key := makeKey(v.Maker, m.Model)
+			key := cameraKey(v.Maker, m.Model)
 			camera := cameras[key]
 			if camera.Maker == "" { // Camera isn't present in cameras.xml or imageio_libraw.c
 				camera.Decoder = "Unknown"
@@ -515,7 +515,7 @@ func loadRawSpeedDNG(cameras map[string]camera, options options) {
 
 		maker := c[0]
 		model := c[1]
-		key := makeKey(maker, model)
+		key := cameraKey(maker, model)
 
 		if maker == "Maker" && model == "Model" { // Skip header row
 			continue
@@ -827,7 +827,7 @@ func generateTSV(data [][]string, colHeaders map[string]string, options options)
 	return tsvData.String()
 }
 
-func makeKey(maker string, model string) string {
+func cameraKey(maker string, model string) string {
 	// The 'zzz' fixes some sorting issues
 	return maker + " zzz " + model
 }
