@@ -6,7 +6,7 @@ By default the list will be pulled from the current development version, so may 
 
 ## Usage
 
-`camera-support [-libraw <path>] [-rawspeed <path>] [-rawspeeddng <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout|table|all|none>] [-format <md|tsv|none>] [-thformatstr <...;...>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...;...>] [-escape] [-unknown] [-unsupported] [<output path>]`
+`camera-support [-libraw <path>] [-rawspeed <path>] [-rawspeeddng <path>] [-wbpresets <path>] [-noiseprofiles <path>] [-stats <stdout;table;text>] [-format <md|tsv|none>] [-thformatstr <...;...>] [-segments <1-6>] [-fields <...|no-maker|all|all-debug>] [-bools <...;...>] [-escape] [-unknown] [-unsupported] [<output path>]`
 
 All options that take a file path accept either a URL (starting with `https://`) or a relative local path.
 
@@ -38,11 +38,11 @@ Default: `https://raw.githubusercontent.com/darktable-org/darktable/master/data/
 
 ### -stats
 
-Print statistics.
-The default is `stdout` which prints at the end of normal output to the terminal.
+Print statistics. Semicolon delimited list: `stdout;table;text`.
+`stdout` prints to the terminal at the end of normal output.
 `table` adds stats to table headers.
-`all` does both.
-`none` prints nothing.
+`text` prints a paragraph with key stats before the Markdown table.
+Default is nothing.
 
 ### -format
 

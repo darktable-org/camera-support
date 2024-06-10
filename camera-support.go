@@ -68,6 +68,28 @@ type stats struct {
 	noiseProfilePercent int
 }
 
+type options struct {
+	rawspeedPath      string
+	rawspeedDNGPath   string
+	librawPath        string
+	wbpresetsPath     string
+	noiseprofilesPath string
+	stats             struct {
+		stdout bool
+		table  bool
+		text   bool
+	}
+	format      string
+	thFormatStr []string
+	segments    int
+	fields      []string
+	bools       []string
+	escape      bool
+	unknown     bool
+	unsupported bool
+	output      string
+}
+
 func main() {
 	// Having a map inside a struct is obnoxious, so this is not part of the options struct
 	columnHeaders := map[string]string{
@@ -82,30 +104,31 @@ func main() {
 		"debug":         "Debug",
 	}
 
-	var options struct {
-		rawspeedPath      string
-		rawspeedDNGPath   string
-		librawPath        string
-		wbpresetsPath     string
-		noiseprofilesPath string
-		stats             string
-		format            string
-		thFormatStr       []string
-		segments          int
-		fields            []string
-		bools             []string
-		escape            bool
-		unknown           bool
-		unsupported       bool
-		output            string
-	}
+	var options options
 
 	flag.StringVar(&options.rawspeedPath, "rawspeed", "https://raw.githubusercontent.com/darktable-org/rawspeed/develop/data/cameras.xml", "'cameras.xml' location.")
 	flag.StringVar(&options.rawspeedDNGPath, "rawspeeddng", "./rawspeed-dng.csv", "'rawspeed-dng.csv' location.")
 	flag.StringVar(&options.librawPath, "libraw", "https://raw.githubusercontent.com/darktable-org/darktable/master/src/imageio/imageio_libraw.c", "'imageio_libraw.c' location. If empty, LibRaw cameras will not be included.")
 	flag.StringVar(&options.wbpresetsPath, "wbpresets", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/wb_presets.json", "'wb_presets.json' location.")
 	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/noiseprofiles.json", "'noiseprofiles.json' location.")
-	flag.StringVar(&options.stats, "stats", "stdout", "Print statistics. <stdout|table|all|none>")
+
+	flag.Func("stats", "Print statistics. <stdout;table;text>", func(s string) error {
+		s = strings.ToLower(s)
+		for _, v := range strings.Split(s, ";") {
+			switch v {
+			case "stdout":
+				options.stats.stdout = true
+			case "table":
+				options.stats.table = true
+			case "text":
+				options.stats.text = true
+			default:
+				return errors.New(fmt.Sprintf("Invalid argument: \"%v\"\n", v))
+			}
+		}
+		return nil
+	})
+
 	flag.StringVar(&options.format, "format", "md", "Output format. <md|tsv|none>")
 
 	flag.Func("thformatstr", "Format string to use for header fields with statistics. Format is \"no-percent;with-percent\" with a semicolon delimiter. See Go's fmt docs for details.", func(s string) error {
@@ -176,29 +199,29 @@ func main() {
 
 	cameras := map[string]camera{}
 
-	loadRawSpeed(cameras, options.rawspeedPath)
+	loadRawSpeed(cameras, options)
 
 	if options.librawPath != "" {
-		loadLibRaw(cameras, options.librawPath)
+		loadLibRaw(cameras, options)
 	}
 
-	loadWBPresets(cameras, options.wbpresetsPath)
-	loadNoiseProfiles(cameras, options.noiseprofilesPath)
+	loadWBPresets(cameras, options)
+	loadNoiseProfiles(cameras, options)
 
-	loadRawSpeedDNG(cameras, options.rawspeedDNGPath)
+	loadRawSpeedDNG(cameras, options)
 
-	stats := generateStats(cameras, options.unknown, options.unsupported)
+	stats := generateStats(cameras, options)
 
 	////  Output  ////
 
 	if options.format != "none" {
-		data := prepareOutputData(cameras, options.fields, options.bools, options.escape, options.unsupported)
+		data := prepareOutputData(cameras, options)
 
 		outputString := ""
 		if options.format == "md" {
-			outputString = generateMD(data, options.fields, columnHeaders, options.segments, options.stats, options.bools, options.thFormatStr)
+			outputString = generateMD(data, columnHeaders, stats, options)
 		} else if options.format == "tsv" {
-			outputString = generateTSV(data, options.fields, columnHeaders)
+			outputString = generateTSV(data, columnHeaders, options)
 		} else {
 			log.Fatalf("Invalid format string: %v\n", options.format)
 		}
@@ -212,7 +235,7 @@ func main() {
 		}
 	}
 
-	if options.stats == "stdout" || options.stats == "all" {
+	if options.stats.stdout == true {
 		if options.output == "stdout" && options.format != "none" {
 			fmt.Println("")
 		}
@@ -255,9 +278,9 @@ func getData(path string) []byte {
 	}
 }
 
-func loadRawSpeed(cameras map[string]camera, path string) {
+func loadRawSpeed(cameras map[string]camera, options options) {
 	camerasXML := etree.NewDocument()
-	if err := camerasXML.ReadFromBytes(getData(path)); err != nil {
+	if err := camerasXML.ReadFromBytes(getData(options.rawspeedPath)); err != nil {
 		log.Fatal(err)
 	}
 
@@ -327,13 +350,13 @@ func loadRawSpeed(cameras map[string]camera, path string) {
 	}
 }
 
-func loadLibRaw(cameras map[string]camera, path string) {
+func loadLibRaw(cameras map[string]camera, options options) {
 	inStruct := false
 	maker := ""
 	model := ""
 	alias := ""
 
-	librawData := string(getData(path))
+	librawData := string(getData(options.librawPath))
 
 	scanner := bufio.NewScanner(strings.NewReader(librawData))
 	for scanner.Scan() {
@@ -393,11 +416,11 @@ func loadLibRaw(cameras map[string]camera, path string) {
 	}
 
 	if inStruct == false {
-		log.Fatal("No LibRaw cameras found in ", path)
+		log.Fatal("No LibRaw cameras found in ", options.librawPath)
 	}
 }
 
-func loadWBPresets(cameras map[string]camera, path string) {
+func loadWBPresets(cameras map[string]camera, options options) {
 	type Presets struct {
 		WBPresets []struct {
 			Maker  string `json:"maker"`
@@ -407,7 +430,7 @@ func loadWBPresets(cameras map[string]camera, path string) {
 		} `json:"wb_presets"`
 	}
 
-	jsonBytes := getData(path)
+	jsonBytes := getData(options.wbpresetsPath)
 
 	var presets Presets
 	err := json.Unmarshal(jsonBytes, &presets)
@@ -433,7 +456,7 @@ func loadWBPresets(cameras map[string]camera, path string) {
 	}
 }
 
-func loadNoiseProfiles(cameras map[string]camera, path string) {
+func loadNoiseProfiles(cameras map[string]camera, options options) {
 	type Profiles struct {
 		Noiseprofiles []struct {
 			Maker  string `json:"maker"`
@@ -443,7 +466,7 @@ func loadNoiseProfiles(cameras map[string]camera, path string) {
 		} `json:"noiseprofiles"`
 	}
 
-	jsonBytes := getData(path)
+	jsonBytes := getData(options.noiseprofilesPath)
 
 	var profiles Profiles
 	err := json.Unmarshal(jsonBytes, &profiles)
@@ -469,8 +492,8 @@ func loadNoiseProfiles(cameras map[string]camera, path string) {
 	}
 }
 
-func loadRawSpeedDNG(cameras map[string]camera, rsDNGPath string) {
-	rsDNG, err := os.Open(rsDNGPath)
+func loadRawSpeedDNG(cameras map[string]camera, options options) {
+	rsDNG, err := os.Open(options.rawspeedDNGPath)
 	if err != nil {
 		log.Fatal("Cannot open rawspeed-dng.csv: ", err)
 	}
@@ -504,19 +527,19 @@ func loadRawSpeedDNG(cameras map[string]camera, rsDNGPath string) {
 	}
 }
 
-func generateStats(cameras map[string]camera, unknown bool, unsupported bool) stats {
+func generateStats(cameras map[string]camera, options options) stats {
 
 	s := stats{}
 
 	// Totals
 	for _, c := range cameras {
-		if c.Decoder == "" && unsupported == false {
+		if c.Decoder == "" && options.unsupported == false {
 			continue
-		} else if c.Decoder == "" && unsupported == true {
+		} else if c.Decoder == "" && options.unsupported == true {
 			s.unsupported += 1
-		} else if c.Decoder == "Unknown" && unknown == false {
+		} else if c.Decoder == "Unknown" && options.unknown == false {
 			continue
-		} else if c.Decoder == "Unknown" && unknown == true {
+		} else if c.Decoder == "Unknown" && options.unknown == true {
 			s.unknown += 1
 		} else if c.Decoder == "RawSpeed" {
 			s.rawspeed += 1
@@ -548,7 +571,7 @@ func generateStats(cameras map[string]camera, unknown bool, unsupported bool) st
 	return s
 }
 
-func prepareOutputData(cameras map[string]camera, fields []string, bools []string, escape bool, unsupported bool) [][]string {
+func prepareOutputData(cameras map[string]camera, options options) [][]string {
 	data := make([][]string, 0, len(cameras))
 
 	mdEscapes := strings.NewReplacer(
@@ -576,28 +599,28 @@ func prepareOutputData(cameras map[string]camera, fields []string, bools []strin
 	for _, k := range camerasOrder {
 		c := cameras[k]
 
-		if unsupported == false && c.Decoder == "" {
+		if options.unsupported == false && c.Decoder == "" {
 			continue
 		}
 
 		// First two fields in row are always cameras key and Maker, even if not requested
 		// They may be needed when generating the output
-		row := make([]string, 0, len(fields)+2)
+		row := make([]string, 0, len(options.fields)+2)
 		row = append(row, k)
 		row = append(row, c.Maker)
 
-		for _, f := range fields {
+		for _, f := range options.fields {
 			switch f {
 			case "maker":
 				row = append(row, c.Maker)
 			case "model":
-				if escape == true {
+				if options.escape == true {
 					row = append(row, mdEscapes.Replace(c.Model))
 				} else {
 					row = append(row, c.Model)
 				}
 			case "aliases":
-				if escape == true {
+				if options.escape == true {
 					row = append(row, mdEscapes.Replace(strings.Join(c.Aliases, ", ")))
 				} else {
 					row = append(row, strings.Join(c.Aliases, ", "))
@@ -606,15 +629,15 @@ func prepareOutputData(cameras map[string]camera, fields []string, bools []strin
 				row = append(row, strings.Join(c.Formats, ", "))
 			case "wbpresets":
 				if c.WBPresets == true {
-					row = append(row, bools[0])
+					row = append(row, options.bools[0])
 				} else {
-					row = append(row, bools[1])
+					row = append(row, options.bools[1])
 				}
 			case "noiseprofiles":
 				if c.NoiseProfiles == true {
-					row = append(row, bools[0])
+					row = append(row, options.bools[0])
 				} else {
-					row = append(row, bools[1])
+					row = append(row, options.bools[1])
 				}
 			case "rssupported":
 				row = append(row, c.RSSupported)
@@ -631,10 +654,10 @@ func prepareOutputData(cameras map[string]camera, fields []string, bools []strin
 	return data
 }
 
-func generateMD(data [][]string, fields []string, colHeaders map[string]string, segments int, showStats string, bools []string, thFormatStr []string) string {
+func generateMD(data [][]string, colHeaders map[string]string, stats stats, options options) string {
 
 	headerFields := map[string][]string{}
-	if showStats == "table" || showStats == "all" {
+	if options.stats.table == true {
 		sumModels := 0
 		sumWB := 0
 		sumNP := 0
@@ -651,37 +674,37 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 				if j == 0 || j == 1 {
 					continue
 				}
-				switch fields[j-2] {
+				switch options.fields[j-2] {
 				case "model":
 					sumModels += 1
 				case "wbpresets":
-					if f == bools[0] {
+					if f == options.bools[0] {
 						sumWB += 1
 					}
 				case "noiseprofiles":
-					if f == bools[0] {
+					if f == options.bools[0] {
 						sumNP += 1
 					}
 				}
 			}
 
-			if i == rowsTotal-1 || (segments != 0 && maker != makerNext) {
+			if i == rowsTotal-1 || (options.segments != 0 && maker != makerNext) {
 				percentWB := int(math.Round(float64(sumWB) / float64(sumModels) * 100))
 				percentNP := int(math.Round(float64(sumNP) / float64(sumModels) * 100))
 
-				hf := make([]string, 0, len(fields))
-				for _, f := range fields {
+				hf := make([]string, 0, len(options.fields))
+				for _, f := range options.fields {
 					switch f {
 					case "model":
-						hf = append(hf, fmt.Sprintf(thFormatStr[0], colHeaders[f], sumModels))
+						hf = append(hf, fmt.Sprintf(options.thFormatStr[0], colHeaders[f], sumModels))
 					case "wbpresets":
-						hf = append(hf, fmt.Sprintf(thFormatStr[1], colHeaders[f], sumWB, percentWB))
+						hf = append(hf, fmt.Sprintf(options.thFormatStr[1], colHeaders[f], sumWB, percentWB))
 					case "noiseprofiles":
-						hf = append(hf, fmt.Sprintf(thFormatStr[1], colHeaders[f], sumNP, percentNP))
+						hf = append(hf, fmt.Sprintf(options.thFormatStr[1], colHeaders[f], sumNP, percentNP))
 					default:
 						hf = append(hf, colHeaders[f])
 					}
-					if segments == 0 {
+					if options.segments == 0 {
 						headerFields["fulltable"] = hf
 					} else {
 						headerFields[maker] = hf
@@ -694,15 +717,15 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 			}
 		}
 	} else { // No stats
-		hf := make([]string, 0, len(fields))
-		for _, f := range fields {
+		hf := make([]string, 0, len(options.fields))
+		for _, f := range options.fields {
 			hf = append(hf, colHeaders[f])
 		}
 		headerFields["nostats"] = hf
 	}
 
 	// Calculate the widest field in each column, so table cells line up nicely
-	colWidths := make([]int, len(fields), len(fields))
+	colWidths := make([]int, len(options.fields), len(options.fields))
 	for _, h := range headerFields {
 		for i, f := range h {
 			w := len(f)
@@ -730,14 +753,20 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 	// Build the table
 	mdTable := strings.Builder{}
 
-	hLevel := strings.Repeat("#", segments)
+	hLevel := strings.Repeat("#", options.segments)
+
+	if options.stats.text == true {
+		t := fmt.Sprintf("In total **%v** cameras are supported, of which **%v (%v%%)** have white balance presets and **%v (%v%%)** have noise profiles.\n\n",
+			stats.cameras, stats.wbPresets, stats.wbPresetsPercent, stats.noiseProfiles, stats.noiseProfilePercent)
+		mdTable.WriteString(t)
+	}
 
 	makerPrev := ""
 	for i, r := range data {
 		maker := r[1]
 
-		if i == 0 && segments == 0 { // Table header
-			if showStats == "table" || showStats == "all" {
+		if i == 0 && options.segments == 0 { // Table header
+			if options.stats.table == true {
 				mdTable.WriteString(contructTableRow(headerFields["fulltable"], colWidths))
 			} else {
 				mdTable.WriteString(contructTableRow(headerFields["nostats"], colWidths))
@@ -745,9 +774,9 @@ func generateMD(data [][]string, fields []string, colHeaders map[string]string, 
 			mdTable.WriteString(tRowSep)
 		}
 
-		if segments != 0 && maker != makerPrev { // Segment header
+		if options.segments != 0 && maker != makerPrev { // Segment header
 			mdTable.WriteString(fmt.Sprintf("\n%s %s\n\n", hLevel, maker))
-			if showStats == "table" || showStats == "all" {
+			if options.stats.table == true {
 				mdTable.WriteString(contructTableRow(headerFields[maker], colWidths))
 			} else {
 				mdTable.WriteString(contructTableRow(headerFields["nostats"], colWidths))
@@ -775,9 +804,9 @@ func contructTableRow(fields []string, colWidths []int) string {
 	return tableRow.String()
 }
 
-func generateTSV(data [][]string, fields []string, colHeaders map[string]string) string {
-	headers := make([]string, 0, len(fields))
-	for _, f := range fields {
+func generateTSV(data [][]string, colHeaders map[string]string, options options) string {
+	headers := make([]string, 0, len(options.fields))
+	for _, f := range options.fields {
 		headers = append(headers, colHeaders[f])
 	}
 
