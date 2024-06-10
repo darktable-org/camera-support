@@ -58,6 +58,8 @@ type stats struct {
 	rawspeedPercent     int
 	libraw              int
 	librawPercent       int
+	supported           int
+	supportedPercent    int
 	unknown             int
 	unknownPercent      int
 	unsupported         int
@@ -242,6 +244,9 @@ func main() {
 		fmt.Printf("Cameras:\t %4v\n", stats.cameras)
 		fmt.Printf("  RawSpeed:\t %4v  %3v%%\n", stats.rawspeed, stats.rawspeedPercent)
 		fmt.Printf("  LibRaw:\t %4v  %3v%%\n", stats.libraw, stats.librawPercent)
+		if options.unknown == true || options.unsupported == true {
+			fmt.Printf("  Supported:\t %4v  %3v%%\n", stats.supported, stats.supportedPercent)
+		}
 		if options.unknown == true {
 			fmt.Printf("  Unknown:\t %4v  %3v%%\n", stats.unknown, stats.unknownPercent)
 		}
@@ -543,8 +548,10 @@ func generateStats(cameras map[string]camera, options options) stats {
 			s.unknown += 1
 		} else if c.Decoder == "RawSpeed" {
 			s.rawspeed += 1
+			s.supported += 1
 		} else if c.Decoder == "LibRaw" {
 			s.libraw += 1
+			s.supported += 1
 		}
 
 		s.aliases += len(c.Aliases)
@@ -563,6 +570,7 @@ func generateStats(cameras map[string]camera, options options) stats {
 	// Percentages
 	s.rawspeedPercent = int(math.Round(float64(s.rawspeed) / float64(s.cameras) * 100))
 	s.librawPercent = int(math.Round(float64(s.libraw) / float64(s.cameras) * 100))
+	s.supportedPercent = int(math.Round(float64(s.supported) / float64(s.cameras) * 100))
 	s.unknownPercent = int(math.Round(float64(s.unknown) / float64(s.cameras) * 100))
 	s.unsupportedPercent = int(math.Round(float64(s.unsupported) / float64(s.cameras) * 100))
 	s.wbPresetsPercent = int(math.Round(float64(s.wbPresets) / float64(s.cameras) * 100))
@@ -757,7 +765,7 @@ func generateMD(data [][]string, colHeaders map[string]string, stats stats, opti
 
 	if options.stats.text == true {
 		t := fmt.Sprintf("In total **%v** cameras are supported, of which **%v (%v%%)** have white balance presets and **%v (%v%%)** have noise profiles.\n\n",
-			stats.cameras, stats.wbPresets, stats.wbPresetsPercent, stats.noiseProfiles, stats.noiseProfilePercent)
+			stats.supported, stats.wbPresets, stats.wbPresetsPercent, stats.noiseProfiles, stats.noiseProfilePercent)
 		mdTable.WriteString(t)
 	}
 
