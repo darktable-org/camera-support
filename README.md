@@ -2,7 +2,7 @@
 
 Generate list of cameras supported by darktable.
 
-By default the list will be pulled from the current development version, so may not reflect what the stable version supports.
+By default the list will be generated from the current development version, so may not reflect what the stable version supports.
 
 ## Usage
 
@@ -12,7 +12,7 @@ All options that take a file path accept either a URL (starting with `https://`)
 
 ### -libraw
 
-`imageio_libraw.c` location. If empty, LibRaw cameras will not be included.
+`imageio_libraw.c` location. If empty (`""`), LibRaw cameras will not be included.
 Default: `https://raw.githubusercontent.com/darktable-org/darktable/master/src/imageio/imageio_libraw.c`
 
 ### -rawspeed
@@ -23,8 +23,8 @@ Default: `https://raw.githubusercontent.com/darktable-org/rawspeed/develop/data/
 ### -rawspeeddng
 
 `rawspeed-dng.csv` location.
-Default: `./rawspeed-dng.csv`
 This is a list of supported DNG cameras, that have WB presets or noise profiles, but are not in `cameras.xml`. CSV file, with one Maker and one Model column.
+Default: `./rawspeed-dng.csv`
 
 ### -wbpresets
 
@@ -47,9 +47,10 @@ Default is nothing.
 ### -format
 
 Output format.
-`md`, the default, is Markdown table.
+`md` is Markdown table.
 `tsv` is tab separated values.
 `none` creates no output. Useful if only interested in statistics.
+Default is Markdown.
 
 ### -thformatstr
 
@@ -63,9 +64,10 @@ Segments tables by maker, adding a header using the specified level (1-6).
 
 ### -fields
 
-Semicolon delimited list of fields to print. Default is `Maker;Model;Aliases;WBPresets;NoiseProfiles;Decoder`.
+Semicolon delimited list of fields to print.
 See the `camera` struct in `camera-support.go` for valid fields. Not case-sensitive.
 Presets: `no-maker|all|all-debug`
+Default is `Maker;Model;Aliases;WBPresets;NoiseProfiles;Decoder`.
 
 ### -bools
 
@@ -77,7 +79,7 @@ Escape Markdown characters in Model and Aliases fields.
 
 ### -unknown
 
-Include cameras with unknown support status. They are cameras that are in `wb_presets.json` or `noiseprofiles.json`, but not in `cameras.xml` or `imageio_libraw.c`. Also affects statistics.
+Include cameras with unknown support status. These are cameras that are in `wb_presets.json` or `noiseprofiles.json`, but not in `cameras.xml`, `imageio_libraw.c` or `rawspeed-dng.csv`. Also affects statistics.
 
 ### -unsupported
 
