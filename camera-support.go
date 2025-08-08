@@ -125,7 +125,7 @@ func main() {
 			case "text":
 				options.stats.text = true
 			default:
-				return errors.New(fmt.Sprintf("Invalid argument: \"%v\"\n", v))
+				return fmt.Errorf("Invalid argument: \"%v\"\n", v)
 			}
 		}
 		return nil
@@ -440,7 +440,7 @@ func loadWBPresets(cameras map[string]camera, options options) {
 	var presets Presets
 	err := json.Unmarshal(jsonBytes, &presets)
 	if err != nil {
-		fmt.Println("error:", err)
+		log.Fatal("Unable to unmarshal wb_presets.json: ", err)
 	}
 
 	for _, v := range presets.WBPresets {
@@ -476,7 +476,7 @@ func loadNoiseProfiles(cameras map[string]camera, options options) {
 	var profiles Profiles
 	err := json.Unmarshal(jsonBytes, &profiles)
 	if err != nil {
-		fmt.Println("error:", err)
+		log.Fatal("Unable to unmarshal noiseprofiles.json: ", err)
 	}
 
 	for _, v := range profiles.Noiseprofiles {
@@ -506,7 +506,7 @@ func loadRawSpeedDNG(cameras map[string]camera, options options) {
 			break
 		}
 		if err != nil {
-			log.Fatalln("Cannot read rawspeed-dng.csv:", err)
+			log.Fatal("Cannot read rawspeed-dng.csv: ", err)
 		}
 
 		maker := c[0]
