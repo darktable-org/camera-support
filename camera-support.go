@@ -500,18 +500,20 @@ func loadNoiseProfiles(cameras map[string]camera, options options) {
 func loadRawSpeedDNG(cameras map[string]camera, options options) {
 	reader := csv.NewReader(strings.NewReader(string(getData(options.rawspeedDNGPath))))
 
-	rows, err := reader.ReadAll()
-	if err != nil {
-		log.Fatal("Cannot read rawspeed-dng.csv: ", err)
-	}
-
-	for _, c := range rows {
+	for {
+		c, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalln("Cannot read rawspeed-dng.csv:", err)
+		}
 
 		maker := c[0]
 		model := c[1]
 		key := cameraKey(maker, model)
 
-		if maker == "Maker" && model == "Model" { // Skip header row
+		if maker == "Maker" && model == "Model" {
 			continue
 		}
 
@@ -523,6 +525,7 @@ func loadRawSpeedDNG(cameras map[string]camera, options options) {
 		} else {
 			log.Fatalln("rawspeed-dng.csv:", maker, model, "not found in cameras")
 		}
+
 	}
 }
 
