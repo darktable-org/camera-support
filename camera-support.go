@@ -109,7 +109,7 @@ func main() {
 	var options options
 
 	flag.StringVar(&options.rawspeedPath, "rawspeed", "https://raw.githubusercontent.com/darktable-org/rawspeed/develop/data/cameras.xml", "'cameras.xml' location.")
-	flag.StringVar(&options.rawspeedDNGPath, "rawspeeddng", "./rawspeed-dng.csv", "'rawspeed-dng.csv' location.")
+	flag.StringVar(&options.rawspeedDNGPath, "rawspeeddng", "https://raw.githubusercontent.com/Donatzsky/darktable-camera-support/main/rawspeed-dng.csv", "'rawspeed-dng.csv' location.")
 	flag.StringVar(&options.librawPath, "libraw", "https://raw.githubusercontent.com/darktable-org/darktable/master/src/imageio/imageio_libraw.c", "'imageio_libraw.c' location. If empty, LibRaw cameras will not be included.")
 	flag.StringVar(&options.wbpresetsPath, "wbpresets", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/wb_presets.json", "'wb_presets.json' location.")
 	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/noiseprofiles.json", "'noiseprofiles.json' location.")
@@ -498,14 +498,8 @@ func loadNoiseProfiles(cameras map[string]camera, options options) {
 }
 
 func loadRawSpeedDNG(cameras map[string]camera, options options) {
-	rsDNG, err := os.Open(options.rawspeedDNGPath)
-	if err != nil {
-		log.Fatal("Cannot open rawspeed-dng.csv: ", err)
-	}
-	defer rsDNG.Close()
+	reader := csv.NewReader(strings.NewReader(string(getData(options.rawspeedDNGPath))))
 
-	reader := csv.NewReader(rsDNG)
-	// reader.Comma = ';'
 	rows, err := reader.ReadAll()
 	if err != nil {
 		log.Fatal("Cannot read rawspeed-dng.csv: ", err)

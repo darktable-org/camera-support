@@ -24,7 +24,7 @@ Default: `https://raw.githubusercontent.com/darktable-org/rawspeed/develop/data/
 
 `rawspeed-dng.csv` location.
 This is a list of supported DNG cameras, that have WB presets or noise profiles, but are not in `cameras.xml`. CSV file, with one Maker and one Model column.
-Default: `./rawspeed-dng.csv`
+Default: `https://raw.githubusercontent.com/Donatzsky/darktable-camera-support/main/rawspeed-dng.csv`
 
 ### -wbpresets
 
