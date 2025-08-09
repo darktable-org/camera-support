@@ -374,13 +374,8 @@ func loadLibRaw(cameras map[string]camera, options options) {
 	alias := ""
 
 	librawData := string(getData(options.librawPath))
-
 	scanner := bufio.NewScanner(strings.NewReader(librawData))
 	for scanner.Scan() {
-		matchMaker := false
-		matchModel := false
-		matchAlias := false
-
 		line := scanner.Text()
 
 		if strings.Contains(line, "const model_map_t modelMap[] = {") {
@@ -392,17 +387,13 @@ func loadLibRaw(cameras map[string]camera, options options) {
 			break
 		}
 
-		matchMaker = strings.Contains(line, ".clean_make =")
-		matchModel = strings.Contains(line, ".clean_model =")
-		matchAlias = strings.Contains(line, ".clean_alias =")
-
 		re := regexp.MustCompile(`".+"`)
 		foundStr := strings.Trim(re.FindString(line), "\"")
-		if matchMaker == true {
+		if strings.Contains(line, ".clean_make =") {
 			maker = foundStr
-		} else if matchModel == true {
+		} else if strings.Contains(line, ".clean_model =") {
 			model = foundStr
-		} else if matchAlias == true {
+		} else if strings.Contains(line, ".clean_alias =") {
 			alias = foundStr
 		}
 
@@ -411,17 +402,11 @@ func loadLibRaw(cameras map[string]camera, options options) {
 			camera := cameras[key]
 
 			if model != alias {
-				// Ensure no duplicate aliases
-				aliasesCurrent := make(map[string]struct{})
-				for _, a := range camera.Aliases {
-					aliasesCurrent[strings.ToLower(a)] = struct{}{}
-				}
-				_, ok := aliasesCurrent[strings.ToLower(alias)]
-				if ok == false {
-					camera.Aliases = append(camera.Aliases, alias)
-				}
+				camera.Aliases = append(camera.Aliases, alias)
 			}
 
+			slices.Sort(camera.Aliases)
+			camera.Aliases = slices.Compact(camera.Aliases)
 			camera.Maker = maker
 			camera.Model = model
 			camera.Decoder = "LibRaw"
@@ -429,7 +414,7 @@ func loadLibRaw(cameras map[string]camera, options options) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		log.Fatal("Error occurred: ", err)
+		log.Fatal("Error reading imageio_libraw.c: ", err)
 	}
 
 	if inStruct == false {
