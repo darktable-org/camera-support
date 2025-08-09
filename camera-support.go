@@ -131,12 +131,23 @@ func main() {
 		return nil
 	})
 
-	flag.StringVar(&options.format, "format", "md", "Output format. <md|tsv|none>")
+	flag.Func("format", "Output format. <md|tsv|none>", func(s string) error {
+		// Default is defined under unset flag handling
+		m, err := regexp.MatchString(`^(md|tsv|none)$`, s)
+		if err != nil {
+			return err
+		}
+		if m != true {
+			return errors.New("Must be \"md\", \"tsv\" or \"none\"\n")
+		}
+		options.format = s
+		return nil
+	})
 
 	flag.Func("thformatstr", "Format string to use for header fields with statistics. Format is \"no-percent;with-percent\" with a semicolon delimiter. See Go's fmt docs for details.", func(s string) error {
 		// Default is defined under unset flag handling
 		if strings.Count(s, ";") != 1 {
-			return errors.New("Must contain one semicolon")
+			return errors.New("Must contain one semicolon\n")
 		}
 		options.thFormatStr = strings.Split(s, ";")
 		return nil
@@ -145,19 +156,21 @@ func main() {
 	flag.Func("segments", "Segments tables by maker, adding a header using the specified level. <1-6>", func(s string) error {
 		i, err := strconv.Atoi(s)
 		if err != nil || i > 6 {
-			return errors.New("Must be an integer 0-6")
+			return errors.New("Must be an integer 0-6\n")
 		}
 		options.segments = i
 		return nil
 	})
 
+	// TODO: Validate arguments
 	flag.Func("fields", "Semicolon delimited list of fields to print. See the 'camera' struct in 'camera-support.go' for valid fields. <...|no-maker|all|all-debug>", func(s string) error {
 		// Default is defined under unset flag handling
-		if s == "all" {
+		switch s {
+		case "all":
 			s = "Maker;Model;Aliases;WBPresets;NoiseProfiles;Decoder;RSSupported;Formats"
-		} else if s == "all-debug" {
+		case "all-debug":
 			s = "Maker;Model;Aliases;WBPresets;NoiseProfiles;Decoder;RSSupported;Formats;Debug"
-		} else if s == "no-maker" {
+		case "no-maker":
 			s = "Model;Aliases;WBPresets;NoiseProfiles;Decoder"
 		}
 		s = strings.ToLower(s)
@@ -168,7 +181,7 @@ func main() {
 	flag.Func("bools", "Text to use for boolean fields. Format is \"true;false\" with a semicolon delimiter.", func(s string) error {
 		// Default is defined under unset flag handling
 		if strings.Count(s, ";") != 1 {
-			return errors.New("Must contain one semicolon")
+			return errors.New("Must contain one semicolon\n")
 		}
 		options.bools = strings.Split(s, ";")
 		return nil
@@ -180,6 +193,9 @@ func main() {
 	flag.Parse()
 
 	// Handle unset flags
+	if options.format == "" {
+		options.format = "md"
+	}
 	if options.thFormatStr == nil {
 		options.thFormatStr = append(options.thFormatStr, "%v (%v)", "%v (%v / %v%%)")
 	}
@@ -220,12 +236,11 @@ func main() {
 		data := prepareOutputData(cameras, options)
 
 		outputString := ""
-		if options.format == "md" {
+		switch options.format {
+		case "md":
 			outputString = generateMD(data, columnHeaders, stats, options)
-		} else if options.format == "tsv" {
+		case "tsv":
 			outputString = generateTSV(data, columnHeaders, options)
-		} else {
-			log.Fatalf("Invalid format string: %v\n", options.format)
 		}
 
 		if options.output != "stdout" {
@@ -327,9 +342,6 @@ func loadRawSpeed(cameras map[string]camera, options options) {
 				} else {
 					alias = id
 				}
-				// fmt.Println("  id:\t" + id)
-				// fmt.Println("  val:\t" + val)
-				// fmt.Println("  alias:\t" + alias)
 				camera.Aliases = append(camera.Aliases, alias)
 				slices.Sort(camera.Aliases)
 				camera.Aliases = slices.Compact(camera.Aliases)
@@ -435,10 +447,8 @@ func loadWBPresets(cameras map[string]camera, options options) {
 		} `json:"wb_presets"`
 	}
 
-	jsonBytes := getData(options.wbpresetsPath)
-
 	var presets Presets
-	err := json.Unmarshal(jsonBytes, &presets)
+	err := json.Unmarshal(getData(options.wbpresetsPath), &presets)
 	if err != nil {
 		log.Fatal("Unable to unmarshal wb_presets.json: ", err)
 	}
@@ -471,10 +481,8 @@ func loadNoiseProfiles(cameras map[string]camera, options options) {
 		} `json:"noiseprofiles"`
 	}
 
-	jsonBytes := getData(options.noiseprofilesPath)
-
 	var profiles Profiles
-	err := json.Unmarshal(jsonBytes, &profiles)
+	err := json.Unmarshal(getData(options.noiseprofilesPath), &profiles)
 	if err != nil {
 		log.Fatal("Unable to unmarshal noiseprofiles.json: ", err)
 	}
@@ -730,7 +738,7 @@ func generateMD(data [][]string, colHeaders map[string]string, stats stats, opti
 	}
 
 	// Calculate the widest field in each column, so table cells line up nicely
-	colWidths := make([]int, len(options.fields), len(options.fields))
+	colWidths := make([]int, len(options.fields))
 	for _, h := range headerFields {
 		for i, f := range h {
 			w := len(f)
@@ -753,7 +761,7 @@ func generateMD(data [][]string, colHeaders map[string]string, stats stats, opti
 	for _, c := range colWidths {
 		sep = append(sep, strings.Repeat("-", c))
 	}
-	tRowSep := contructTableRow(sep, colWidths)
+	tRowSep := constructTableRow(sep, colWidths)
 
 	// Build the table
 	mdTable := strings.Builder{}
@@ -772,9 +780,9 @@ func generateMD(data [][]string, colHeaders map[string]string, stats stats, opti
 
 		if i == 0 && options.segments == 0 { // Table header
 			if options.stats.table == true {
-				mdTable.WriteString(contructTableRow(headerFields["fulltable"], colWidths))
+				mdTable.WriteString(constructTableRow(headerFields["fulltable"], colWidths))
 			} else {
-				mdTable.WriteString(contructTableRow(headerFields["nostats"], colWidths))
+				mdTable.WriteString(constructTableRow(headerFields["nostats"], colWidths))
 			}
 			mdTable.WriteString(tRowSep)
 		}
@@ -782,14 +790,14 @@ func generateMD(data [][]string, colHeaders map[string]string, stats stats, opti
 		if options.segments != 0 && maker != makerPrev { // Segment header
 			mdTable.WriteString(fmt.Sprintf("\n%s %s\n\n", hLevel, maker))
 			if options.stats.table == true {
-				mdTable.WriteString(contructTableRow(headerFields[maker], colWidths))
+				mdTable.WriteString(constructTableRow(headerFields[maker], colWidths))
 			} else {
-				mdTable.WriteString(contructTableRow(headerFields["nostats"], colWidths))
+				mdTable.WriteString(constructTableRow(headerFields["nostats"], colWidths))
 			}
 			mdTable.WriteString(tRowSep)
 		}
 
-		mdTable.WriteString(contructTableRow(r[2:], colWidths))
+		mdTable.WriteString(constructTableRow(r[2:], colWidths))
 
 		makerPrev = maker
 	}
@@ -797,13 +805,13 @@ func generateMD(data [][]string, colHeaders map[string]string, stats stats, opti
 	return mdTable.String()
 }
 
-func contructTableRow(fields []string, colWidths []int) string {
+func constructTableRow(fields []string, colWidths []int) string {
 	tableRow := strings.Builder{}
 
 	for i, f := range fields {
 		tableRow.WriteString(fmt.Sprintf("| %-*s ", colWidths[i], f))
 		if i == len(fields)-1 {
-			tableRow.WriteString(fmt.Sprintf("|\n"))
+			tableRow.WriteString("|\n")
 		}
 	}
 	return tableRow.String()
