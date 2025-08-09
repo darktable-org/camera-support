@@ -106,7 +106,12 @@ func main() {
 		"debug":         "Debug",
 	}
 
-	var options options
+	options := options{
+		format:      "md",
+		thFormatStr: []string{"%v (%v)", "%v (%v / %v%%)"},
+		fields:      []string{"maker", "model", "aliases", "wbpresets", "noiseprofiles", "decoder"},
+		bools:       []string{"Yes", "No"},
+	}
 
 	flag.StringVar(&options.rawspeedPath, "rawspeed", "https://raw.githubusercontent.com/darktable-org/rawspeed/develop/data/cameras.xml", "'cameras.xml' location.")
 	flag.StringVar(&options.rawspeedDNGPath, "rawspeeddng", "https://raw.githubusercontent.com/Donatzsky/darktable-camera-support/main/rawspeed-dng.csv", "'rawspeed-dng.csv' location.")
@@ -132,7 +137,6 @@ func main() {
 	})
 
 	flag.Func("format", "Output format. <md|tsv|none>", func(s string) error {
-		// Default is defined under unset flag handling
 		m, err := regexp.MatchString(`^(md|tsv|none)$`, s)
 		if err != nil {
 			return err
@@ -145,7 +149,6 @@ func main() {
 	})
 
 	flag.Func("thformatstr", "Format string to use for header fields with statistics. Format is \"no-percent;with-percent\" with a semicolon delimiter. See Go's fmt docs for details.", func(s string) error {
-		// Default is defined under unset flag handling
 		if strings.Count(s, ";") != 1 {
 			return errors.New("Must contain one semicolon\n")
 		}
@@ -162,24 +165,34 @@ func main() {
 		return nil
 	})
 
-	// TODO: Validate arguments
 	flag.Func("fields", "Semicolon delimited list of fields to print. See the 'camera' struct in 'camera-support.go' for valid fields. <...|no-maker|all|all-debug>", func(s string) error {
-		// Default is defined under unset flag handling
 		switch s {
 		case "all":
-			s = "Maker;Model;Aliases;WBPresets;NoiseProfiles;Decoder;RSSupported;Formats"
+			options.fields = []string{"maker", "model", "aliases", "wbpresets", "noiseprofiles", "decoder", "rssupported", "formats"}
 		case "all-debug":
-			s = "Maker;Model;Aliases;WBPresets;NoiseProfiles;Decoder;RSSupported;Formats;Debug"
+			options.fields = []string{"maker", "model", "aliases", "wbpresets", "noiseprofiles", "decoder", "rssupported", "formats", "debug"}
 		case "no-maker":
-			s = "Model;Aliases;WBPresets;NoiseProfiles;Decoder"
+			options.fields = []string{"model", "aliases", "wbpresets", "noiseprofiles", "decoder"}
+		default:
+			options.fields = strings.Split(strings.ToLower(s), ";")
+
+			all := []string{"maker", "model", "aliases", "wbpresets", "noiseprofiles", "decoder", "rssupported", "formats", "debug"}
+			valid := true
+			badFields := []string{}
+			for _, f := range options.fields {
+				if !slices.Contains(all, f) {
+					badFields = append(badFields, f)
+					valid = false
+				}
+			}
+			if !valid {
+				return fmt.Errorf("One or more invalid field names: %q \n", badFields)
+			}
 		}
-		s = strings.ToLower(s)
-		options.fields = strings.Split(s, ";")
 		return nil
 	})
 
 	flag.Func("bools", "Text to use for boolean fields. Format is \"true;false\" with a semicolon delimiter.", func(s string) error {
-		// Default is defined under unset flag handling
 		if strings.Count(s, ";") != 1 {
 			return errors.New("Must contain one semicolon\n")
 		}
@@ -191,20 +204,6 @@ func main() {
 	flag.BoolVar(&options.unknown, "unknown", false, "Include cameras with unknown support status. Also affects statistics.")
 	flag.BoolVar(&options.unsupported, "unsupported", false, "Include unsupported cameras. Also affects statistics.")
 	flag.Parse()
-
-	// Handle unset flags
-	if options.format == "" {
-		options.format = "md"
-	}
-	if options.thFormatStr == nil {
-		options.thFormatStr = append(options.thFormatStr, "%v (%v)", "%v (%v / %v%%)")
-	}
-	if options.fields == nil {
-		options.fields = append(options.fields, "maker", "model", "aliases", "wbpresets", "noiseprofiles", "decoder")
-	}
-	if options.bools == nil {
-		options.bools = append(options.bools, "Yes", "No")
-	}
 
 	// Non-flag options
 	if flag.Arg(0) != "" {
