@@ -20,6 +20,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -35,6 +36,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/beevik/etree"
 )
@@ -274,14 +276,24 @@ func main() {
 
 func getData(path string) []byte {
 	if strings.HasPrefix(path, "https://") {
-		res, err := http.Get(path)
+		client := &http.Client{
+			Timeout: 30 * time.Second,
+		}
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, path, nil)
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		res, err := client.Do(req)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		data, err := io.ReadAll(res.Body)
 		res.Body.Close()
 		if res.StatusCode > 299 {
-			log.Fatalf("Response failed with status code: %d and\nbody: %s\n", res.StatusCode, data)
+			log.Fatalf("Response failed with status code %d and\nbody: %s\n", res.StatusCode, data)
 		}
 		if err != nil {
 			log.Fatal(err)
