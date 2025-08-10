@@ -93,7 +93,6 @@ type options struct {
 }
 
 func main() {
-	// Having a map inside a struct is obnoxious, so this is not part of the options struct
 	columnHeaders := map[string]string{
 		"maker":         "Maker",
 		"model":         "Model",
@@ -342,8 +341,6 @@ func loadRawSpeed(cameras map[string]camera, options options) {
 					alias = id
 				}
 				camera.Aliases = append(camera.Aliases, alias)
-				slices.Sort(camera.Aliases)
-				camera.Aliases = slices.Compact(camera.Aliases)
 			}
 		}
 
@@ -358,10 +355,12 @@ func loadRawSpeed(cameras map[string]camera, options options) {
 			camera.Decoder = "RawSpeed"
 		}
 
-		camera.Debug = append(camera.Debug, debug...)
-		slices.Sort(camera.Debug)
-		camera.Debug = slices.Compact(camera.Debug)
+		slices.Sort(camera.Aliases)
+		slices.Reverse(camera.Aliases) // Ensure ALL CAPS aliases get removed by slices.CompactFunc
+		camera.Aliases = slices.CompactFunc(camera.Aliases, strings.EqualFold)
+		slices.Reverse(camera.Aliases)
 
+		camera.Debug = append(camera.Debug, debug...)
 		cameras[key] = camera
 	}
 }
@@ -402,10 +401,12 @@ func loadLibRaw(cameras map[string]camera, options options) {
 
 			if model != alias {
 				camera.Aliases = append(camera.Aliases, alias)
+				slices.Sort(camera.Aliases)
+				slices.Reverse(camera.Aliases) // Ensure ALL CAPS aliases get removed by slices.CompactFunc
+				camera.Aliases = slices.CompactFunc(camera.Aliases, strings.EqualFold)
+				slices.Reverse(camera.Aliases)
 			}
 
-			slices.Sort(camera.Aliases)
-			camera.Aliases = slices.Compact(camera.Aliases)
 			camera.Maker = maker
 			camera.Model = model
 			camera.Decoder = "LibRaw"
@@ -525,7 +526,6 @@ func generateStats(cameras map[string]camera, options options) stats {
 
 	s := stats{}
 
-	// Totals
 	for _, c := range cameras {
 		if c.Decoder == "" && options.unsupported == false {
 			continue
@@ -556,7 +556,6 @@ func generateStats(cameras map[string]camera, options options) stats {
 		s.cameras += 1
 	}
 
-	// Percentages
 	s.rawspeedPercent = int(math.Round(float64(s.rawspeed) / float64(s.cameras) * 100))
 	s.librawPercent = int(math.Round(float64(s.libraw) / float64(s.cameras) * 100))
 	s.supportedPercent = int(math.Round(float64(s.supported) / float64(s.cameras) * 100))
@@ -641,6 +640,8 @@ func prepareOutputData(cameras map[string]camera, options options) [][]string {
 			case "decoder":
 				row = append(row, c.Decoder)
 			case "debug":
+				slices.Sort(c.Debug)
+				c.Debug = slices.Compact(c.Debug)
 				row = append(row, strings.Join(c.Debug, ", "))
 			}
 		}
