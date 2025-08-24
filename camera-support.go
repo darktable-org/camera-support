@@ -344,14 +344,16 @@ func loadRawSpeed(cameras map[string]camera, options options) {
 				alias := ""
 				id := a.SelectAttrValue("id", "")
 				val := a.Text()
+
+				// Sometimes <Alias> doesn't have an id attribute, so use the text instead
+				// Would be better if cameras.xml was consistent
 				if id == "" {
-					// Sometimes <Alias> doesn't have an id attribute, so use the text instead
-					// Would be better if cameras.xml was consistent
 					alias, _ = strings.CutPrefix(val, maker+" ")
 					debug = append(debug, "cameras.xml: No id in Alias")
 				} else {
 					alias = id
 				}
+
 				camera.Aliases = append(camera.Aliases, alias)
 			}
 		}
@@ -745,7 +747,8 @@ func generateMD(data [][]string, colHeaders map[string]string, stats stats, opti
 		}
 	}
 	for _, r := range data {
-		for i, f := range r[2:] { // We skip the first two fields, since they are not in the output
+		// We skip the first two fields, since they are not in the output
+		for i, f := range r[2:] {
 			w := len(f)
 			if w > colWidths[i] {
 				colWidths[i] = w
