@@ -115,7 +115,7 @@ func main() {
 	}
 
 	flag.StringVar(&options.rawspeedPath, "rawspeed", "https://raw.githubusercontent.com/darktable-org/rawspeed/develop/data/cameras.xml", "'cameras.xml' location.")
-	flag.StringVar(&options.rawspeedDNGPath, "rawspeeddng", "https://raw.githubusercontent.com/Donatzsky/darktable-camera-support/main/rawspeed-dng.csv", "'rawspeed-dng.csv' location.")
+	flag.StringVar(&options.rawspeedDNGPath, "rawspeeddng", "https://raw.githubusercontent.com/darktable-org/camera-support/main/rawspeed-dng.csv", "'rawspeed-dng.csv' location.")
 	flag.StringVar(&options.librawPath, "libraw", "https://raw.githubusercontent.com/darktable-org/darktable/master/src/imageio/imageio_libraw.c", "'imageio_libraw.c' location. If empty, LibRaw cameras will not be included.")
 	flag.StringVar(&options.wbpresetsPath, "wbpresets", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/wb_presets.json", "'wb_presets.json' location.")
 	flag.StringVar(&options.noiseprofilesPath, "noiseprofiles", "https://raw.githubusercontent.com/darktable-org/darktable/master/data/noiseprofiles.json", "'noiseprofiles.json' location.")
