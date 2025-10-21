@@ -1,6 +1,6 @@
 /*
    This file is part of darktable,
-   Copyright (C) 2009-2020 darktable developers.
+   Copyright (C) 2009-2025 darktable developers.
 
    darktable is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -177,11 +177,11 @@ func main() {
 		default:
 			options.fields = strings.Split(strings.ToLower(s), ";")
 
-			all := []string{"maker", "model", "aliases", "wbpresets", "noiseprofiles", "decoder", "rssupported", "formats", "debug"}
 			valid := true
 			badFields := []string{}
 			for _, f := range options.fields {
-				if !slices.Contains(all, f) {
+				_, ok := columnHeaders[f]
+				if !ok {
 					badFields = append(badFields, f)
 					valid = false
 				}
