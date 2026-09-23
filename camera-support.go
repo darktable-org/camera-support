@@ -354,7 +354,18 @@ func loadRawSpeed(cameras map[string]camera, options options) {
 					alias = id
 				}
 
-				camera.Aliases = append(camera.Aliases, alias)
+				if !strings.EqualFold(model, alias) {
+					// Ensure no duplicate aliases
+					aliasesSet := map[string]bool{}
+					for _, a := range camera.Aliases {
+						aliasesSet[strings.ToLower(a)] = true
+					}
+					if !aliasesSet[strings.ToLower(alias)] {
+						camera.Aliases = append(camera.Aliases, alias)
+					}
+				} else {
+					debug = append(debug, "cameras.xml: Redundant alias: "+model)
+				}
 			}
 		}
 
@@ -368,11 +379,6 @@ func loadRawSpeed(cameras map[string]camera, options options) {
 		if camera.RSSupported == "" {
 			camera.Decoder = "RawSpeed"
 		}
-
-		slices.Sort(camera.Aliases)
-		slices.Reverse(camera.Aliases) // Ensure ALL CAPS aliases get removed by slices.CompactFunc
-		camera.Aliases = slices.CompactFunc(camera.Aliases, strings.EqualFold)
-		slices.Reverse(camera.Aliases)
 
 		camera.Debug = append(camera.Debug, debug...)
 		cameras[key] = camera
@@ -413,12 +419,15 @@ func loadLibRaw(cameras map[string]camera, options options) {
 			key := cameraKey(maker, model)
 			camera := cameras[key]
 
-			if model != alias {
-				camera.Aliases = append(camera.Aliases, alias)
-				slices.Sort(camera.Aliases)
-				slices.Reverse(camera.Aliases) // Ensure ALL CAPS aliases get removed by slices.CompactFunc
-				camera.Aliases = slices.CompactFunc(camera.Aliases, strings.EqualFold)
-				slices.Reverse(camera.Aliases)
+			if !strings.EqualFold(model, alias) {
+				// Ensure no duplicate aliases
+				aliasesSet := map[string]bool{}
+				for _, a := range camera.Aliases {
+					aliasesSet[strings.ToLower(a)] = true
+				}
+				if !aliasesSet[strings.ToLower(alias)] {
+					camera.Aliases = append(camera.Aliases, alias)
+				}
 			}
 
 			camera.Maker = maker
@@ -630,6 +639,7 @@ func prepareOutputData(cameras map[string]camera, options options) [][]string {
 					row = append(row, c.Model)
 				}
 			case "aliases":
+				slices.Sort(c.Aliases)
 				if options.escape == true {
 					row = append(row, mdEscapes.Replace(strings.Join(c.Aliases, ", ")))
 				} else {
